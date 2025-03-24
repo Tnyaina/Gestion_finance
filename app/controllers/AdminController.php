@@ -326,7 +326,7 @@ class AdminController
     // Lister les budgets à valider
     public function listBudgets()
     {
-        $budgets = $this->budgetModel->getAllBudgets('en_attente'); // On filtre sur "en_attente"
+        $budgets = $this->budgetModel->getAllBudgets('en_attente'); 
         $data = [
             'budgets' => $budgets,
             'success' => $_SESSION['budget_success'] ?? null,
