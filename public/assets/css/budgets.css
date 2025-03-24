@@ -1,0 +1,148 @@
+/* assets/css/budgets.css */
+.container {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 0 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.sidebar {
+    flex: 1;
+    min-width: 300px;
+    max-width: 400px;
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.main-content {
+    flex: 3;
+    min-width: 0;
+}
+
+.departement-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.budget-form, .filters {
+    margin-bottom: 30px;
+}
+
+.budget-form h4, .filters h4 {
+    font-size: 1.25rem;
+    color: #343a40;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-control {
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+}
+
+.btn {
+    border-radius: 5px;
+    padding: 8px 15px;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.detail-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.periode-section {
+    margin-bottom: 30px;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.periode-section h5 {
+    font-size: 1.5rem;
+    color: #343a40;
+    margin-bottom: 15px;
+}
+
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 15px;
+}
+
+.card-header {
+    background-color: #e9ecef;
+    border-bottom: none;
+    padding: 10px 15px;
+    font-weight: bold;
+}
+
+.card-body {
+    padding: 15px;
+}
+
+.budget-details table {
+    margin-top: 10px;
+}
+
+.alert {
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.navigation-buttons {
+    margin-top: 20px;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+
+    .sidebar, .main-content {
+        max-width: 100%;
+    }
+
+    .detail-row {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .detail-row .form-group {
+        width: 100%;
+    }
+}
