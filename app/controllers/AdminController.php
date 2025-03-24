@@ -4,6 +4,7 @@ namespace app\controllers;
 
 use app\models\UtilisateurModel;
 use app\models\AdminModel;
+use app\models\BudgetModel;
 use Flight;
 use Exception;
 
@@ -11,6 +12,7 @@ class AdminController
 {
     private $utilisateurModel;
     private $AdminModel;
+    private $budgetModel;
 
     public function __construct()
     {
@@ -21,6 +23,7 @@ class AdminController
         $db = Flight::db();
         $this->utilisateurModel = new UtilisateurModel($db);
         $this->AdminModel = new AdminModel($db);
+        $this->budgetModel = new BudgetModel($db);
 
         if (!isset($_SESSION['utilisateur']) || !$this->utilisateurModel->estAdmin($_SESSION['utilisateur']['id_utilisateur'])) {
             Flight::redirect('/login');
@@ -465,5 +468,118 @@ class AdminController
             $_SESSION['dept_error'] = $e->getMessage();
         }
         Flight::redirect('/admin/departements');
+    }
+
+    // Lister les budgets à valider
+    public function listBudgets()
+    {
+        $budgets = $this->budgetModel->getAllBudgets('en_attente'); 
+        $data = [
+            'budgets' => $budgets,
+            'success' => $_SESSION['budget_success'] ?? null,
+            'error' => $_SESSION['budget_error'] ?? null
+        ];
+        unset($_SESSION['budget_success'], $_SESSION['budget_error']);
+        Flight::render('admin/budgets.php', $data);
+    }
+
+    // Approuver un budget
+    public function approveBudget($id)
+    {
+        try {
+            $success = $this->budgetModel->approveBudget($id);
+            if ($success) {
+                $_SESSION['budget_success'] = "Budget approuvé avec succès.";
+            } else {
+                $_SESSION['budget_error'] = "Erreur lors de l'approbation du budget.";
+            }
+        } catch (Exception $e) {
+            $_SESSION['budget_error'] = $e->getMessage();
+        }
+        Flight::redirect('/admin/budgets');
+    }
+
+    // Rejeter un budget
+    public function rejectBudget($id)
+    {
+        try {
+            $success = $this->budgetModel->rejectBudget($id);
+            if ($success) {
+                $_SESSION['budget_success'] = "Budget rejeté avec succès.";
+            } else {
+                $_SESSION['budget_error'] = "Erreur lors du rejet du budget.";
+            }
+        } catch (Exception $e) {
+            $_SESSION['budget_error'] = $e->getMessage();
+        }
+        Flight::redirect('/admin/budgets');
+    }
+
+    public function editBudget()
+    {
+        $id_budget = Flight::request()->data->id_budget;
+        $solde_depart = trim(Flight::request()->data->solde_depart);
+        $detail_ids = Flight::request()->data->detail_ids ?? [];
+        $categories = Flight::request()->data->categories ?? [];
+        $montants = Flight::request()->data->montants ?? [];
+        $descriptions = Flight::request()->data->descriptions ?? [];
+
+        // Validation
+        $errors = [];
+        if (empty($solde_depart) || !is_numeric($solde_depart) || $solde_depart < 0) {
+            $errors[] = "Le solde de départ est requis et doit être un nombre positif";
+        }
+
+        $details = [];
+        for ($i = 0; $i < count($categories); $i++) {
+            if (!empty($categories[$i]) && !empty($montants[$i])) {
+                if (!is_numeric($montants[$i]) || $montants[$i] <= 0) {
+                    $errors[] = "Le montant pour la catégorie #$i doit être un nombre positif";
+                } else {
+                    $details[] = [
+                        'id_detail' => $detail_ids[$i] ?? null,
+                        'id_categorie' => $categories[$i],
+                        'montant' => $montants[$i],
+                        'description' => $descriptions[$i] ?? ''
+                    ];
+                }
+            }
+        }
+
+        if (empty($details)) {
+            $errors[] = "Au moins un détail de budget est requis";
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['budget_error'] = $errors;
+            Flight::redirect('/admin/budgets');
+            return;
+        }
+
+        try {
+            // Mettre à jour le solde de départ
+            $stmt = Flight::db()->prepare(
+                "UPDATE budgets SET solde_depart = :solde_depart, solde_final = :solde_depart WHERE id_budget = :id_budget"
+            );
+            $stmt->execute([
+                'solde_depart' => $solde_depart,
+                'id_budget' => $id_budget
+            ]);
+
+            // Supprimer les anciens détails
+            $stmt = Flight::db()->prepare("DELETE FROM details_budget WHERE id_budget = :id_budget");
+            $stmt->execute(['id_budget' => $id_budget]);
+
+            // Ajouter les nouveaux détails
+            foreach ($details as $detail) {
+                $this->budgetModel->addBudgetDetail($id_budget, $detail['id_categorie'], $detail['montant'], $detail['description']);
+            }
+
+            $_SESSION['budget_success'] = "Budget modifié avec succès.";
+            Flight::redirect('/admin/budgets');
+        } catch (Exception $e) {
+            $_SESSION['budget_error'] = $e->getMessage();
+            Flight::redirect('/admin/budgets');
+        }
     }
 }
