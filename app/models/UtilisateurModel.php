@@ -213,6 +213,14 @@ class UtilisateurModel
             throw new Exception("Erreur lors de la récupération des catégories: " . $e->getMessage());
         }
     }
+    public function createCategorie($nom, $type)
+    {
+        $stmt = $this->db->prepare("INSERT INTO categories (nom, type) VALUES (:nom, :type)");
+        return $stmt->execute([
+            'nom' => $nom,
+            'type' => $type
+        ]);
+    }
 
     public function getTransactionsByDepartement($id_departement, $mois = null, $annee = null)
     {

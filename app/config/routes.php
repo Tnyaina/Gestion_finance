@@ -210,3 +210,13 @@ Flight::route('POST /user/finances/import', function() {
     $controller = new UserController();
     $controller->importTransactions();
 });
+
+Flight::route('POST /admin/import', function() {
+    $controller = new AdminController();
+    $controller->handleImport();
+});
+
+Flight::route('GET /admin/download_template/@type', function($type) {
+    $controller = new AdminController();
+    $controller->downloadTemplate($type);
+});

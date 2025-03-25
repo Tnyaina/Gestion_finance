@@ -1,0 +1,3 @@
+nom_utilisateur,mot_de_passe,role,id_departement
+jean.dupont,Pass1234,utilisateur_departement,1
+marie.admin,Admin2023,admin,2

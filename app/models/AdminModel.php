@@ -2,10 +2,11 @@
 // app/models/BudgetModel.php
 namespace app\models;
 
-require('D:\xampp\htdocs\PDF\fpdf186\fpdf.php');
+require_once dirname(__DIR__) . '/../public/fpdf186/fpdf.php';
 use FPDF;
 use PDO;
 use Exception;
+use Flight;
 
 class AdminModel
 {

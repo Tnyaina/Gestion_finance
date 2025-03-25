@@ -8,6 +8,7 @@ use app\models\BudgetModel;
 use Flight;
 use Exception;
 
+
 class AdminController
 {
     private $utilisateurModel;
@@ -614,24 +615,160 @@ class AdminController
     }
 
     public function exportMonth()
-{
-    if (!isset($_SESSION['utilisateur']) || $_SESSION['utilisateur']['role'] !== 'admin') {
-        Flight::redirect('/login');
-        return;
+    {
+        if (!isset($_SESSION['utilisateur']) || $_SESSION['utilisateur']['role'] !== 'admin') {
+            Flight::redirect('/login');
+            return;
+        }
+
+        $monthDate = $_POST['month_date'] ?? null;
+        if (!$monthDate) {
+            Flight::redirect('/admin/dashboard?error=missing_month');
+            return;
+        }
+
+        [$year, $month] = explode('-', $monthDate);
+
+        // Mettre à jour la situation globale pour garantir la cohérence
+        $this->AdminModel->updateSituationGlobale();
+
+        // Exporter les détails du mois en PDF
+        $this->AdminModel->exportMonthDetailsToPDF((int)$month, (int)$year);
     }
 
-    $monthDate = $_POST['month_date'] ?? null;
-    if (!$monthDate) {
-        Flight::redirect('/admin/dashboard?error=missing_month');
-        return;
+    public function handleImport()
+    {
+        if (!isset($_SESSION['utilisateur']) || $_SESSION['utilisateur']['role'] !== 'admin') {
+            Flight::redirect('/login');
+            return;
+        }
+
+        $import_type = Flight::request()->data->import_type ?? null;
+        $file = Flight::request()->files->file ?? null;
+
+        if (!$import_type || !$file || $file['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['import_error'] = "Veuillez sélectionner un type de données et un fichier valide.";
+            Flight::redirect('/admin/dashboard');
+            return;
+        }
+
+        $allowed_types = ['utilisateurs', 'departements', 'categories'];
+        if (!in_array($import_type, $allowed_types)) {
+            $_SESSION['import_error'] = "Type d'importation non valide.";
+            Flight::redirect('/admin/dashboard');
+            return;
+        }
+
+        $file_path = $file['tmp_name'];
+        if (($handle = fopen($file_path, 'r')) !== false) {
+            $headers = fgetcsv($handle, 1000, ','); // Première ligne = en-têtes
+            $errors = [];
+            $success_count = 0;
+
+            while (($data = fgetcsv($handle, 1000, ',')) !== false) {
+                $row = array_combine($headers, $data);
+                try {
+                    switch ($import_type) {
+                        case 'utilisateurs':
+                            $this->importUtilisateur($row);
+                            break;
+                        case 'departements':
+                            $this->importDepartement($row);
+                            break;
+                        case 'categories':
+                            $this->importCategorie($row);
+                            break;
+                    }
+                    $success_count++;
+                } catch (Exception $e) {
+                    $errors[] = "Erreur ligne " . ($success_count + count($errors) + 2) . " : " . $e->getMessage();
+                }
+            }
+            fclose($handle);
+
+            if (empty($errors)) {
+                $_SESSION['import_success'] = "$success_count $import_type importés avec succès.";
+            } else {
+                $_SESSION['import_error'] = implode('<br>', $errors);
+                $_SESSION['import_success'] = "$success_count $import_type importés, mais avec des erreurs.";
+            }
+        } else {
+            $_SESSION['import_error'] = "Impossible d'ouvrir le fichier.";
+        }
+
+        Flight::redirect('/admin/dashboard');
     }
 
-    [$year, $month] = explode('-', $monthDate);
+    private function importUtilisateur($row)
+    {
+        $nom_utilisateur = trim($row['nom_utilisateur'] ?? '');
+        $mot_de_passe = trim($row['mot_de_passe'] ?? 'default123'); // Mot de passe par défaut si absent
+        $role = trim($row['role'] ?? 'utilisateur_departement');
+        $id_departement = trim($row['id_departement'] ?? '');
 
-    // Mettre à jour la situation globale pour garantir la cohérence
-    $this->AdminModel->updateSituationGlobale();
+        if (empty($nom_utilisateur) || empty($id_departement) || !in_array($role, ['admin', 'utilisateur_departement'])) {
+            throw new Exception("Données invalides pour l'utilisateur $nom_utilisateur.");
+        }
+        if ($this->utilisateurModel->nomUtilisateurExists($nom_utilisateur)) {
+            throw new Exception("Nom d'utilisateur $nom_utilisateur déjà utilisé.");
+        }
 
-    // Exporter les détails du mois en PDF
-    $this->AdminModel->exportMonthDetailsToPDF((int)$month, (int)$year);
-}
+        $this->utilisateurModel->create($nom_utilisateur, $mot_de_passe, $id_departement, $role);
+    }
+
+    private function importDepartement($row)
+    {
+        $nom = trim($row['nom'] ?? '');
+
+        if (empty($nom)) {
+            throw new Exception("Nom du département requis.");
+        }
+
+        $this->utilisateurModel->createDepartement($nom);
+    }
+
+    private function importCategorie($row)
+    {
+        $nom = trim($row['nom'] ?? '');
+        $type = trim($row['type'] ?? '');
+
+        if (empty($nom) || !in_array($type, ['gain', 'depense'])) {
+            throw new Exception("Données invalides pour la catégorie $nom.");
+        }
+
+        $this->utilisateurModel->createCategorie($nom, $type);
+    }
+
+    public function downloadTemplate($type)
+    {
+        if (!isset($_SESSION['utilisateur']) || $_SESSION['utilisateur']['role'] !== 'admin') {
+            Flight::redirect('/login');
+            return;
+        }
+
+        $allowed_types = ['utilisateurs', 'departements', 'categories'];
+        if (!in_array($type, $allowed_types)) {
+            Flight::redirect('/admin/dashboard?error=invalid_template_type');
+            return;
+        }
+
+        $file_map = [
+            'utilisateurs' => 'user.csv',
+            'departements' => 'dept.csv',
+            'categories' => 'cat.csv'
+        ];
+
+        $file_path = dirname(__DIR__) . '/public/assets/' . $file_map[$type];
+
+        if (file_exists($file_path)) {
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="' . $file_map[$type] . '"');
+            header('Content-Length: ' . filesize($file_path));
+            readfile($file_path);
+            exit;
+        } else {
+            $_SESSION['import_error'] = "Modèle pour $type introuvable dans assets/.";
+            Flight::redirect('/admin/dashboard');
+        }
+    }
 }
