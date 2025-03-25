@@ -77,9 +77,9 @@
                 <button type="submit" class="btn btn-primary">Importer</button>
             </form>
             <p>
-                <a href="<?php echo BASE_URL; ?>/admin/download_template/utilisateurs">Modèle Utilisateurs</a> |
-                <a href="<?php echo BASE_URL; ?>/admin/download_template/departements">Modèle Départements</a> |
-                <a href="<?php echo BASE_URL; ?>/admin/download_template/categories">Modèle Catégories</a>
+                <a href="<?php echo BASE_URL; ?>/assets/user.csv">Modèle Utilisateurs</a> |
+                <a href="<?php echo BASE_URL; ?>/assets/dept.cscv">Modèle Départements</a> |
+                <a href="<?php echo BASE_URL; ?>/assets/cat.csv">Modèle Catégories</a>
             </p>
         </div>
 
