@@ -646,8 +646,8 @@ class UtilisateurModel
 
     private function getPreviousPeriod($mois, $annee)
     {
-        $mois = (int)$mois;
-        $annee = (int)$annee;
+        $mois = (int) $mois;
+        $annee = (int) $annee;
         if ($mois == 1) {
             return ['mois' => 12, 'annee' => $annee - 1];
         }
@@ -668,5 +668,89 @@ class UtilisateurModel
         } catch (Exception $e) {
             throw new Exception("Erreur lors de la mise à jour du solde de départ: " . $e->getMessage());
         }
+    }
+
+    public function getAllGains($mois = null, $annee = null)
+    {
+        $query = "
+        SELECT 
+            db.id_detail,
+            b.id_budget,
+            d.id_departement,
+            d.nom AS nom_departement,
+            b.mois,
+            b.annee,
+            c.id_categorie,
+            c.nom AS categorie_gain,
+            db.montant,
+            db.description,
+            b.statut AS statut_budget,
+            DATE_FORMAT(CONCAT(b.annee, '-', b.mois, '-01'), '%Y-%m') AS periode
+        FROM 
+            details_budget db
+        JOIN 
+            budgets b ON db.id_budget = b.id_budget
+        JOIN 
+            categories c ON db.id_categorie = c.id_categorie
+        JOIN 
+            departements d ON b.id_departement = d.id_departement
+        WHERE 
+            c.type = 'gain'";
+
+        if ($mois && $annee) {
+            $query .= " AND b.mois = :mois AND b.annee = :annee";
+        }
+
+        $query .= " ORDER BY b.annee DESC, b.mois DESC, d.nom, c.nom";
+
+        $stmt = $this->db->prepare($query);
+        if ($mois && $annee) {
+            $stmt->bindValue(':mois', $mois, \PDO::PARAM_INT);
+            $stmt->bindValue(':annee', $annee, \PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function getAllDepenses($mois = null, $annee = null)
+    {
+        $query = "
+        SELECT 
+            db.id_detail,
+            b.id_budget,
+            d.id_departement,
+            d.nom AS nom_departement,
+            b.mois,
+            b.annee,
+            c.id_categorie,
+            c.nom AS categorie_depense,
+            db.montant,
+            db.description,
+            b.statut AS statut_budget,
+            DATE_FORMAT(CONCAT(b.annee, '-', b.mois, '-01'), '%Y-%m') AS periode
+        FROM 
+            details_budget db
+        JOIN 
+            budgets b ON db.id_budget = b.id_budget
+        JOIN 
+            categories c ON db.id_categorie = c.id_categorie
+        JOIN 
+            departements d ON b.id_departement = d.id_departement
+        WHERE 
+            c.type = 'depense'";
+
+        if ($mois && $annee) {
+            $query .= " AND b.mois = :mois AND b.annee = :annee";
+        }
+
+        $query .= " ORDER BY b.annee DESC, b.mois DESC, d.nom, c.nom";
+
+        $stmt = $this->db->prepare($query);
+        if ($mois && $annee) {
+            $stmt->bindValue(':mois', $mois, \PDO::PARAM_INT);
+            $stmt->bindValue(':annee', $annee, \PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

@@ -1,6 +1,7 @@
 -- Structure de la base de données en français pour la gestion financière d'entreprise
 CREATE DATABASE gestion_finance;
-use gestion_finance;
+USE gestion_finance;
+
 -- Table des départements
 CREATE TABLE departements (
     id_departement INT AUTO_INCREMENT PRIMARY KEY,
@@ -72,71 +73,23 @@ CREATE TABLE exports (
     FOREIGN KEY (id_utilisateur) REFERENCES utilisateurs(id_utilisateur)
 );
 
--- Vue pour la situation globale de l'entreprise par mois/année
-CREATE VIEW situation_globale AS
-SELECT 
-    b.mois,
-    b.annee,
-    
-    -- Solde de départ prévisionnel total
-    SUM(b.solde_depart) AS solde_depart_previsionnel,
-    
-    -- Gains prévisionnels
-    (SELECT IFNULL(SUM(db.montant), 0) 
-     FROM details_budget db 
-     JOIN budgets b2 ON db.id_budget = b2.id_budget
-     JOIN categories c ON db.id_categorie = c.id_categorie
-     WHERE b2.mois = b.mois AND b2.annee = b.annee 
-     AND c.type = 'gain' AND b2.statut = 'approuve') AS gains_previsionnels,
-    
-    -- Dépenses prévisionnelles
-    (SELECT IFNULL(SUM(db.montant), 0) 
-     FROM details_budget db 
-     JOIN budgets b2 ON db.id_budget = b2.id_budget
-     JOIN categories c ON db.id_categorie = c.id_categorie
-     WHERE b2.mois = b.mois AND b2.annee = b.annee 
-     AND c.type = 'depense' AND b2.statut = 'approuve') AS depenses_previsionnelles,
-    
-    -- Solde final prévisionnel total
-    SUM(b.solde_final) AS solde_final_previsionnel,
-    
-    -- Solde de départ réalisé (même que prévisionnel)
-    SUM(b.solde_depart) AS solde_depart_realise,
-    
-    -- Gains réalisés
-    (SELECT IFNULL(SUM(t.montant), 0) 
-     FROM transactions t 
-     JOIN categories c ON t.id_categorie = c.id_categorie
-     WHERE t.mois = b.mois AND t.annee = b.annee 
-     AND c.type = 'gain') AS gains_realises,
-    
-    -- Dépenses réalisées
-    (SELECT IFNULL(SUM(t.montant), 0) 
-     FROM transactions t 
-     JOIN categories c ON t.id_categorie = c.id_categorie
-     WHERE t.mois = b.mois AND t.annee = b.annee 
-     AND c.type = 'depense') AS depenses_realisees,
-    
-    -- Solde final réalisé (calculé)
-    (SUM(b.solde_depart) + 
-     (SELECT IFNULL(SUM(t.montant), 0) 
-      FROM transactions t 
-      JOIN categories c ON t.id_categorie = c.id_categorie
-      WHERE t.mois = b.mois AND t.annee = b.annee 
-      AND c.type = 'gain') -
-     (SELECT IFNULL(SUM(t.montant), 0) 
-      FROM transactions t 
-      JOIN categories c ON t.id_categorie = c.id_categorie
-      WHERE t.mois = b.mois AND t.annee = b.annee 
-      AND c.type = 'depense')) AS solde_final_realise
-FROM 
-    budgets b
-WHERE
-    b.statut = 'approuve'
-GROUP BY 
-    b.mois, b.annee;
+-- Table pour la situation globale de l'entreprise par mois/année
+CREATE TABLE situation_globale (
+    mois INT NOT NULL,
+    annee INT NOT NULL,
+    solde_depart_previsionnel DECIMAL(15, 2) NOT NULL,
+    gains_previsionnels DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    depenses_previsionnelles DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    solde_final_previsionnel DECIMAL(15, 2) NOT NULL,
+    solde_depart_realise DECIMAL(15, 2) NOT NULL,
+    gains_realises DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    depenses_realisees DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    solde_final_realise DECIMAL(15, 2) NOT NULL,
+    solde_depart_mois_suivant DECIMAL(15, 2) NOT NULL DEFAULT 0,
+    UNIQUE (mois, annee)  
+);
 
--- Vue pour les écarts entre prévisions et réalisations
+-- Vue pour les écarts entre prévisions et réalisations (mise à jour pour utiliser la table)
 CREATE VIEW ecarts AS
 SELECT
     sg.mois,
@@ -147,6 +100,7 @@ SELECT
 FROM
     situation_globale sg;
 
+-- Insertion de données initiales
 INSERT INTO departements (nom, description) VALUES
 ('Finance', 'Departement de gestion financiere'),
 ('Comptabilite', 'Departement de gestion des finances'),
@@ -163,4 +117,4 @@ INSERT INTO categories (nom, type) VALUES
 ('Salaires', 'depense'),
 ('Loyer', 'depense'),
 ('Équipements', 'depense'),
-('Maintenance', 'depense'),
+('Maintenance', 'depense');

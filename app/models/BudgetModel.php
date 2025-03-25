@@ -111,7 +111,7 @@ class BudgetModel
             throw new Exception("Erreur lors de la récupération du budget : " . $e->getMessage());
         }
     }
-    // Ajouter cette méthode au BudgetModel si elle n'existe pas encore
+
     public function addBudgetDetail($id_budget, $id_categorie, $montant, $description)
     {
         try {
@@ -149,6 +149,78 @@ class BudgetModel
             return true;
         } catch (Exception $e) {
             throw new Exception("Erreur lors de l'ajout du détail du budget : " . $e->getMessage());
+        }
+    }
+
+    public function updateSoldeFinal($id_budget)
+    {
+        try {
+            // Récupérer le budget
+            $budget = $this->getBudgetById($id_budget);
+            if (!$budget) {
+                throw new Exception("Budget introuvable.");
+            }
+
+            // Calculer les totaux des détails (prévisions uniquement)
+            $details = $this->getBudgetDetails($id_budget);
+            $total_gains = 0;
+            $total_depenses = 0;
+            foreach ($details as $detail) {
+                if ($detail['type_categorie'] === 'gain') {
+                    $total_gains += $detail['montant'];
+                } else {
+                    $total_depenses += $detail['montant'];
+                }
+            }
+
+            // Solde final = solde de départ + gains prévus - dépenses prévues
+            $solde_final = $budget['solde_depart'] + $total_gains - $total_depenses;
+
+            // Mettre à jour dans la base
+            $stmt = $this->db->prepare(
+                "UPDATE budgets SET solde_final = :solde_final WHERE id_budget = :id_budget"
+            );
+            $stmt->execute([
+                'solde_final' => $solde_final,
+                'id_budget' => $id_budget
+            ]);
+
+            return $solde_final;
+        } catch (Exception $e) {
+            throw new Exception("Erreur lors de la mise à jour du solde final : " . $e->getMessage());
+        }
+    }
+
+    // Récupérer les transactions associées à un budget
+    private function getTransactionsByBudget($id_budget)
+    {
+        try {
+            $budget = $this->getBudgetById($id_budget);
+            $stmt = $this->db->prepare(
+                "SELECT t.* FROM transactions t
+                 JOIN budgets b ON t.id_departement = b.id_departement
+                 WHERE b.id_budget = :id_budget 
+                 AND YEAR(t.date_transaction) = b.annee 
+                 AND MONTH(t.date_transaction) = b.mois"
+            );
+            $stmt->execute(['id_budget' => $id_budget]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Erreur lors de la récupération des transactions : " . $e->getMessage());
+        }
+    }
+
+    // Récupérer le type d'une catégorie
+    private function getCategoryType($id_categorie)
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT type FROM categories WHERE id_categorie = :id_categorie"
+            );
+            $stmt->execute(['id_categorie' => $id_categorie]);
+            return $stmt->fetchColumn();
+        } catch (Exception $e) {
+            throw new Exception("Erreur lors de la récupération du type de catégorie : " . $e->getMessage());
         }
     }
 }

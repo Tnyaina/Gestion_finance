@@ -488,4 +488,6 @@ class UserController
             Flight::redirect('/user/budgets');
         }
     }
+
+    
 }
