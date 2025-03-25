@@ -102,7 +102,6 @@ FROM
 
 -- Insertion de données initiales
 INSERT INTO departements (nom, description) VALUES
-('Finance', 'Departement de gestion financiere'),
 ('Comptabilite', 'Departement de gestion des finances'),
 ('Ressources Humaines', 'Departement de gestion du personnel');
 
