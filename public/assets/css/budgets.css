@@ -457,3 +457,40 @@ body {
         min-width: 100%;
     }
 }
+.import-budget {
+    margin-bottom: 35px;
+    background: rgba(236, 240, 241, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.import-budget h2 {
+    font-size: 20px;
+    color: #e67e22;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e67e22;
+    padding-bottom: 5px;
+}
+
+.btn-import {
+    background: #3498db;
+    color: #fff;
+}
+
+.btn-import:hover {
+    background: #2980b9;
+}
+
+.model-link {
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+.model-link a {
+    color: #e74c3c;
+    text-decoration: none;
+}
+
+.model-link a:hover {
+    text-decoration: underline;
+}

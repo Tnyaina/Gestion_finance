@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budgets de votre Département - Gestion Financière</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/budgets.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar -->
@@ -59,6 +61,19 @@
                     <button type="button" class="btn btn-add" onclick="addDetailRow()">+ Ajouter un détail</button>
                     <button type="submit" class="btn btn-submit">Proposer</button>
                 </form>
+            </section>
+
+            <!-- Section Importation Budget -->
+            <section class="import-budget">
+                <h2>Importer un budget</h2>
+                <form method="POST" action="<?php echo BASE_URL; ?>/user/budgets/import" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="budget_file">Fichier CSV</label>
+                        <input type="file" id="budget_file" name="budget_file" accept=".csv" required>
+                    </div>
+                    <button type="submit" class="btn btn-import">Importer</button>
+                </form>
+                <p class="model-link"><a href="<?php echo BASE_URL; ?>/assets/sample_budget.csv" download>Télécharger un modèle CSV</a></p>
             </section>
 
             <!-- Filtres -->
@@ -240,4 +255,5 @@
     <script src="<?php echo BASE_URL; ?>/assets/js/jquery.min.js"></script>
     <script src="<?php echo BASE_URL; ?>/assets/js/bootstrap.min.js"></script>
 </body>
+
 </html>

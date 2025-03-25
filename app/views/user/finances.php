@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestion des Finances - Gestion Financière</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/finances.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Main Content -->
@@ -111,6 +113,20 @@
                 </form>
             </section>
 
+            <!-- Section Importation Transactions -->
+            <section class="import-transactions">
+                <h2>Importer des transactions</h2>
+                <p class="info-note">Note : Les transactions ne peuvent être importées que si un budget approuvé existe pour la période correspondante.</p>
+                <form method="POST" action="<?php echo BASE_URL; ?>/user/finances/import" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="transaction_file">Fichier CSV</label>
+                        <input type="file" id="transaction_file" name="transaction_file" accept=".csv" required>
+                    </div>
+                    <button type="submit" class="btn btn-import">Importer</button>
+                </form>
+                <p class="model-link"><a href="<?php echo BASE_URL; ?>/assets/sample_transactions.csv" download>Télécharger un modèle CSV</a></p>
+            </section>
+
             <!-- Liste des transactions -->
             <section class="transactions-list">
                 <h2>Transactions du département</h2>
@@ -201,4 +217,5 @@
     <script src="<?php echo BASE_URL; ?>/assets/js/jquery.min.js"></script>
     <script src="<?php echo BASE_URL; ?>/assets/js/bootstrap.min.js"></script>
 </body>
+
 </html>

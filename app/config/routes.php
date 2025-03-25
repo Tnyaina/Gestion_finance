@@ -192,3 +192,13 @@ Flight::route('GET /user/export/finances/pdf', function() {
     $controller = new UserController();
     $controller->exportFinancesToPDF();
 });
+
+Flight::route('POST /user/budgets/import', function() {
+    $controller = new UserController();
+    $controller->importBudgets();
+});
+
+Flight::route('POST /user/finances/import', function() {
+    $controller = new UserController();
+    $controller->importTransactions();
+});

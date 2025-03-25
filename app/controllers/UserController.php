@@ -5,12 +5,15 @@ namespace app\controllers;
 use app\models\UtilisateurModel;
 use Flight;
 use Exception;
+use app\models\ImportModel;
+
 
 require_once dirname(__DIR__) . '/../public/fpdf186/fpdf.php';
 class UserController
 {
     private $utilisateurModel;
     private $db;
+    private $importModel;
 
     public function __construct()
     {
@@ -20,6 +23,7 @@ class UserController
 
         $db = Flight::db();
         $this->utilisateurModel = new UtilisateurModel($db);
+        $this->importModel = new ImportModel($db, $this->utilisateurModel);
 
         if (!isset($_SESSION['utilisateur'])) {
             Flight::redirect('/login');
@@ -761,5 +765,53 @@ class UserController
         }
 
         return array_values($periodes);
+    }
+
+    public function importBudgets()
+    {
+        $id_departement = $_SESSION['utilisateur']['id_departement'];
+        if (!isset($_FILES['budget_file']) || $_FILES['budget_file']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['budget_error'] = ["Erreur lors du téléchargement du fichier"];
+            Flight::redirect('/user/budgets');
+            return;
+        }
+
+        $filePath = $_FILES['budget_file']['tmp_name'];
+        try {
+            $report = $this->importModel->importBudgets($id_departement, $filePath);
+            if (empty($report['errors'])) {
+                $_SESSION['budget_success'] = "Budgets importés avec succès : {$report['success']} lignes traitées.";
+            } else {
+                $_SESSION['budget_error'] = array_merge(["Importation partielle : {$report['success']} lignes réussies"], $report['errors']);
+            }
+        } catch (Exception $e) {
+            $_SESSION['budget_error'] = ["Erreur lors de l'importation : " . $e->getMessage()];
+        }
+
+        Flight::redirect('/user/budgets');
+    }
+
+    public function importTransactions()
+    {
+        $id_departement = $_SESSION['utilisateur']['id_departement'];
+        if (!isset($_FILES['transaction_file']) || $_FILES['transaction_file']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['finance_error'] = ["Erreur lors du téléchargement du fichier"];
+            Flight::redirect('/user/finances');
+            return;
+        }
+
+        $filePath = $_FILES['transaction_file']['tmp_name'];
+        try {
+            $report = $this->importModel->importTransactions($id_departement, $filePath);
+            if (empty($report['errors'])) {
+                $_SESSION['finance_success'] = "Transactions importées avec succès : {$report['success']} lignes traitées.";
+            } else {
+                $_SESSION['finance_error'] = array_merge(["Importation partielle : {$report['success']} lignes réussies"], $report['errors']);
+            }
+        } catch (Exception $e) {
+            $_SESSION['finance_error'] = ["Erreur lors de l'importation : " . $e->getMessage()];
+        }
+
+        Flight::redirect('/user/finances');
     }
 }
