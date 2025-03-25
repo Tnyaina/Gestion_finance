@@ -5,10 +5,15 @@ namespace app\controllers;
 use app\models\UtilisateurModel;
 use Flight;
 use Exception;
+use app\models\ImportModel;
 
+
+require_once dirname(__DIR__) . '/../public/fpdf186/fpdf.php';
 class UserController
 {
     private $utilisateurModel;
+    private $db;
+    private $importModel;
 
     public function __construct()
     {
@@ -18,6 +23,7 @@ class UserController
 
         $db = Flight::db();
         $this->utilisateurModel = new UtilisateurModel($db);
+        $this->importModel = new ImportModel($db, $this->utilisateurModel);
 
         if (!isset($_SESSION['utilisateur'])) {
             Flight::redirect('/login');
@@ -489,5 +495,323 @@ class UserController
         }
     }
 
-    
+    private function cleanForPdf($string)
+    {
+        if (!mb_check_encoding($string, 'UTF-8')) {
+            $string = mb_convert_encoding($string, 'UTF-8');
+        }
+        // Remplacer certains caractères problématiques
+        $replacements = [
+            '€' => 'EUR', // Remplace le symbole € par "EUR"
+            '’' => "'",   // Apostrophe courbée
+            '–' => '-',   // Tiret long
+            '…' => '...'  // Points de suspension
+        ];
+        $string = str_replace(array_keys($replacements), array_values($replacements), $string);
+        // Convertir en ISO-8859-1, ignorer les caractères non convertibles
+        return mb_convert_encoding($string, 'ISO-8859-1', 'UTF-8');
+    }
+
+    public function exportDashboardToPDF()
+    {
+        $utilisateur = $_SESSION['utilisateur'];
+        $all = Flight::request()->query['all'] === 'true';
+        $mois = $all ? null : (Flight::request()->query['mois'] ?? null);
+        $annee = $all ? null : (Flight::request()->query['annee'] ?? null);
+        $nom_departement = $this->utilisateurModel->getDepartementById($utilisateur['id_departement'])['nom'];
+        $periodes = $this->getDashboardData($utilisateur['id_departement'], $mois, $annee);
+
+        $pdf = new \FPDF();
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', 'B', 16);
+        $pdf->Cell(0, 10, $this->cleanForPdf("Tableau de bord - $nom_departement"), 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 12);
+        $filtre = 'Filtre : ' . ($all ? 'Toutes les périodes' : ($mois ? sprintf("%02d", $mois) : 'Tous') . '/' . ($annee ?: 'Toutes'));
+        $pdf->Cell(0, 10, $this->cleanForPdf($filtre), 0, 1);
+
+        foreach ($periodes as $periode) {
+            $periode_label = (new \DateTime())->setDate($periode['annee'], $periode['mois'], 1)->format('F Y');
+            $pdf->Ln(5);
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->Cell(0, 10, $this->cleanForPdf($periode_label), 0, 1);
+            $pdf->SetFont('Arial', '', 10);
+
+            $pdf->Cell(50, 10, $this->cleanForPdf('Rubrique'), 1);
+            $pdf->Cell(40, 10, $this->cleanForPdf('Prévisions (EUR)'), 1); // Remplace € par EUR
+            $pdf->Cell(40, 10, $this->cleanForPdf('Réalisations (EUR)'), 1);
+            $pdf->Cell(40, 10, $this->cleanForPdf('Écarts (EUR)'), 1);
+            $pdf->Ln();
+
+            $data = [
+                [$this->cleanForPdf('Solde de départ'), $periode['budget'] ? number_format($periode['budget']['solde_depart'], 2) : '0.00', number_format($periode['realisations']['solde_depart'], 2), '0.00'],
+                [$this->cleanForPdf('Gains'), $periode['budget'] ? number_format($periode['budget']['total_gains'], 2) : '0.00', number_format($periode['realisations']['total_gains'], 2), number_format(abs($periode['ecarts']['gains']), 2)],
+                [$this->cleanForPdf('Dépenses'), $periode['budget'] ? number_format($periode['budget']['total_depenses'], 2) : '0.00', number_format($periode['realisations']['total_depenses'], 2), number_format(abs($periode['ecarts']['depenses']), 2)],
+                [$this->cleanForPdf('Solde final'), $periode['budget'] ? number_format($periode['budget']['solde_final_calculee'], 2) : '0.00', number_format($periode['realisations']['solde_final'], 2), number_format(abs($periode['ecarts']['solde_final']), 2)]
+            ];
+
+            foreach ($data as $row) {
+                $pdf->Cell(50, 10, $row[0], 1);
+                $pdf->Cell(40, 10, $row[1], 1);
+                $pdf->Cell(40, 10, $row[2], 1);
+                $pdf->Cell(40, 10, $row[3], 1);
+                $pdf->Ln();
+            }
+        }
+
+        $filename = 'dashboard_' . $utilisateur['id_utilisateur'] . '_' . date('YmdHis') . '.pdf';
+        $filePath = __DIR__ . '/../../public/exports/' . $filename;
+        if (!is_dir(dirname($filePath))) {
+            mkdir(dirname($filePath), 0777, true);
+        }
+        $pdf->Output('F', $filePath);
+        header('Content-Type: application/pdf');
+        header("Content-Disposition: attachment; filename=\"$filename\"");
+        readfile($filePath);
+        unlink($filePath);
+        exit;
+    }
+
+    public function exportBudgetsToPDF()
+    {
+        $utilisateur = $_SESSION['utilisateur'];
+        $all = Flight::request()->query['all'] === 'true';
+        $mois = $all ? null : (Flight::request()->query['mois'] ?? null);
+        $annee = $all ? null : (Flight::request()->query['annee'] ?? null);
+        $nom_departement = $this->utilisateurModel->getDepartementById($utilisateur['id_departement'])['nom'];
+        $budgets = $this->utilisateurModel->getBudgetsByDepartement($utilisateur['id_departement'], $mois, $annee);
+
+        foreach ($budgets as &$budget) {
+            $budget['details'] = $this->utilisateurModel->getBudgetDetails($budget['id_budget']);
+        }
+        unset($budget);
+
+        $pdf = new \FPDF();
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', 'B', 16);
+        $pdf->Cell(0, 10, $this->cleanForPdf("Budgets - $nom_departement"), 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 12);
+        $filtre = 'Filtre : ' . ($all ? 'Tous les budgets' : ($mois ? sprintf("%02d", $mois) : 'Tous') . '/' . ($annee ?: 'Toutes'));
+        $pdf->Cell(0, 10, $this->cleanForPdf($filtre), 0, 1);
+
+        foreach ($budgets as $budget) {
+            $periode_label = (new \DateTime())->setDate($budget['annee'], $budget['mois'], 1)->format('F Y');
+            $pdf->Ln(5);
+            $pdf->SetFont('Arial', 'B', 12);
+            $pdf->Cell(0, 10, $this->cleanForPdf($periode_label), 0, 1);
+
+            $pdf->SetFont('Arial', 'B', 10);
+            $pdf->Cell(0, 10, $this->cleanForPdf("Budget - Statut : {$budget['statut']}"), 1, 1);
+            $pdf->SetFont('Arial', '', 10);
+            $pdf->Cell(0, 8, $this->cleanForPdf('Solde de départ : ') . number_format($budget['solde_depart'], 2) . ' EUR', 0, 1);
+            $pdf->Cell(0, 8, $this->cleanForPdf('Gains prévus : ') . number_format($budget['total_gains'], 2) . ' EUR', 0, 1);
+            $pdf->Cell(0, 8, $this->cleanForPdf('Dépenses prévues : ') . number_format($budget['total_depenses'], 2) . ' EUR', 0, 1);
+            $pdf->Cell(0, 8, $this->cleanForPdf('Solde final prévu : ') . number_format($budget['solde_final_calculee'], 2) . ' EUR', 0, 1);
+
+            $pdf->Ln(5);
+            $pdf->SetFont('Arial', 'B', 10);
+            $pdf->Cell(0, 10, $this->cleanForPdf('Détails :'), 0, 1);
+            if (empty($budget['details'])) {
+                $pdf->Cell(0, 10, $this->cleanForPdf('Aucun détail disponible.'), 0, 1);
+            } else {
+                $pdf->Cell(50, 10, $this->cleanForPdf('Catégorie'), 1);
+                $pdf->Cell(30, 10, $this->cleanForPdf('Type'), 1);
+                $pdf->Cell(30, 10, $this->cleanForPdf('Montant (EUR)'), 1);
+                $pdf->Cell(70, 10, $this->cleanForPdf('Description'), 1);
+                $pdf->Ln();
+                $pdf->SetFont('Arial', '', 10);
+                foreach ($budget['details'] as $detail) {
+                    $pdf->Cell(50, 10, $this->cleanForPdf($detail['nom_categorie']), 1);
+                    $pdf->Cell(30, 10, $this->cleanForPdf($detail['type_categorie']), 1);
+                    $pdf->Cell(30, 10, number_format($detail['montant'], 2), 1);
+                    $pdf->Cell(70, 10, $this->cleanForPdf($detail['description'] ?: 'N/A'), 1);
+                    $pdf->Ln();
+                }
+            }
+        }
+
+        $exportDir = __DIR__ . '/../../public/exports/';
+        if (!is_dir($exportDir)) {
+            mkdir($exportDir, 0777, true);
+        }
+        $filename = 'budgets_' . $utilisateur['id_utilisateur'] . '_' . date('YmdHis') . '.pdf';
+        $filePath = $exportDir . $filename;
+        $pdf->Output('F', $filePath);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        readfile($filePath);
+        unlink($filePath);
+        exit;
+    }
+
+    public function exportFinancesToPDF()
+    {
+        $utilisateur = $_SESSION['utilisateur'];
+        $all = Flight::request()->query['all'] === 'true';
+        $mois = $all ? null : (Flight::request()->query['mois'] ?? null);
+        $annee = $all ? null : (Flight::request()->query['annee'] ?? null);
+        $nom_departement = $this->utilisateurModel->getDepartementById($utilisateur['id_departement'])['nom'];
+        $summary = $this->utilisateurModel->getFinancialSummary($utilisateur['id_departement'], $mois, $annee);
+        $transactions = $this->utilisateurModel->getTransactionsByDepartement($utilisateur['id_departement'], $mois, $annee);
+
+        $pdf = new \FPDF();
+        $pdf->AddPage();
+        $pdf->SetFont('Arial', 'B', 16);
+        $pdf->Cell(0, 10, $this->cleanForPdf("Finances - $nom_departement"), 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 12);
+        $filtre = 'Filtre : ' . ($all ? 'Toutes les transactions' : ($mois ? sprintf("%02d", $mois) : 'Tous') . '/' . ($annee ?: 'Toutes'));
+        $pdf->Cell(0, 10, $this->cleanForPdf($filtre), 0, 1);
+
+        $pdf->Ln(5);
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->Cell(0, 10, $this->cleanForPdf('Résumé financier'), 0, 1);
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->Cell(50, 10, $this->cleanForPdf('Total des Gains :'), 0);
+        $pdf->Cell(50, 10, number_format($summary['total_gains'], 2) . ' EUR', 0, 1);
+        $pdf->Cell(50, 10, $this->cleanForPdf('Total des Dépenses :'), 0);
+        $pdf->Cell(50, 10, number_format($summary['total_depenses'], 2) . ' EUR', 0, 1);
+        $pdf->Cell(50, 10, $this->cleanForPdf('Solde Final :'), 0);
+        $pdf->Cell(50, 10, number_format($summary['solde_final'], 2) . ' EUR', 0, 1);
+
+        $pdf->Ln(10);
+        $pdf->SetFont('Arial', 'B', 12);
+        $pdf->Cell(0, 10, $this->cleanForPdf('Transactions'), 0, 1);
+        if (empty($transactions)) {
+            $pdf->SetFont('Arial', '', 10);
+            $pdf->Cell(0, 10, $this->cleanForPdf('Aucune transaction trouvée.'), 0, 1);
+        } else {
+            $pdf->SetFont('Arial', 'B', 10);
+            $pdf->Cell(20, 10, $this->cleanForPdf('ID'), 1);
+            $pdf->Cell(40, 10, $this->cleanForPdf('Catégorie'), 1);
+            $pdf->Cell(30, 10, $this->cleanForPdf('Type'), 1);
+            $pdf->Cell(30, 10, $this->cleanForPdf('Montant (EUR)'), 1);
+            $pdf->Cell(40, 10, $this->cleanForPdf('Description'), 1);
+            $pdf->Cell(20, 10, $this->cleanForPdf('Mois'), 1);
+            $pdf->Cell(20, 10, $this->cleanForPdf('Année'), 1);
+            $pdf->Ln();
+            $pdf->SetFont('Arial', '', 10);
+            foreach ($transactions as $transaction) {
+                $pdf->Cell(20, 10, $transaction['id_transaction'], 1);
+                $pdf->Cell(40, 10, $this->cleanForPdf($transaction['nom_categorie']), 1);
+                $pdf->Cell(30, 10, $this->cleanForPdf($transaction['type_categorie']), 1);
+                $pdf->Cell(30, 10, number_format($transaction['montant'], 2), 1);
+                $pdf->Cell(40, 10, $this->cleanForPdf($transaction['description'] ?: 'N/A'), 1);
+                $pdf->Cell(20, 10, sprintf("%02d", $transaction['mois']), 1);
+                $pdf->Cell(20, 10, $transaction['annee'], 1);
+                $pdf->Ln();
+            }
+        }
+
+        $exportDir = __DIR__ . '/../../public/exports/';
+        if (!is_dir($exportDir)) {
+            mkdir($exportDir, 0777, true);
+        }
+        $filename = 'finances_' . $utilisateur['id_utilisateur'] . '_' . date('YmdHis') . '.pdf';
+        $filePath = $exportDir . $filename;
+        $pdf->Output('F', $filePath);
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        readfile($filePath);
+        unlink($filePath);
+        exit;
+    }
+    // Méthode utilitaire pour dashboard
+    private function getDashboardData($id_departement, $mois, $annee)
+    {
+        $budgets = $this->utilisateurModel->getBudgetsByDepartement($id_departement, $mois, $annee);
+        $transactions = $this->utilisateurModel->getTransactionsByDepartement($id_departement, $mois, $annee);
+
+        $periodes = [];
+        foreach ($budgets as $budget) {
+            $key = $budget['annee'] . '-' . $budget['mois'];
+            // Initialisation complète pour chaque période avec budget
+            $periodes[$key] = [
+                'annee' => $budget['annee'],
+                'mois' => $budget['mois'],
+                'budget' => $budget,
+                'realisations' => ['total_gains' => 0, 'total_depenses' => 0, 'solde_depart' => $budget['solde_depart'] ?? 0, 'solde_final' => 0],
+                'ecarts' => ['gains' => 0, 'depenses' => 0, 'solde_final' => 0]
+            ];
+        }
+
+        foreach ($transactions as $transaction) {
+            $key = $transaction['annee'] . '-' . $transaction['mois'];
+            // Si la période n'existe pas encore (pas de budget), l'initialiser
+            if (!isset($periodes[$key])) {
+                $periodes[$key] = [
+                    'annee' => $transaction['annee'],
+                    'mois' => $transaction['mois'],
+                    'budget' => null,
+                    'realisations' => ['total_gains' => 0, 'total_depenses' => 0, 'solde_depart' => 0, 'solde_final' => 0],
+                    'ecarts' => ['gains' => 0, 'depenses' => 0, 'solde_final' => 0]
+                ];
+            }
+
+            // Ajouter les transactions aux réalisations
+            $type = $this->utilisateurModel->getCategories()[$transaction['id_categorie']]['type'] ?? 'depense';
+            if ($type === 'gain') {
+                $periodes[$key]['realisations']['total_gains'] += $transaction['montant'];
+            } else {
+                $periodes[$key]['realisations']['total_depenses'] += $transaction['montant'];
+            }
+
+            // Mettre à jour le solde final et les écarts
+            $budget = $periodes[$key]['budget'];
+            $periodes[$key]['realisations']['solde_final'] = $periodes[$key]['realisations']['solde_depart'] +
+                $periodes[$key]['realisations']['total_gains'] -
+                $periodes[$key]['realisations']['total_depenses'];
+            $periodes[$key]['ecarts']['gains'] = $periodes[$key]['realisations']['total_gains'] - ($budget['total_gains'] ?? 0);
+            $periodes[$key]['ecarts']['depenses'] = $periodes[$key]['realisations']['total_depenses'] - ($budget['total_depenses'] ?? 0);
+            $periodes[$key]['ecarts']['solde_final'] = $periodes[$key]['realisations']['solde_final'] - ($budget['solde_final_calculee'] ?? 0);
+        }
+
+        return array_values($periodes);
+    }
+
+    public function importBudgets()
+    {
+        $id_departement = $_SESSION['utilisateur']['id_departement'];
+        if (!isset($_FILES['budget_file']) || $_FILES['budget_file']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['budget_error'] = ["Erreur lors du téléchargement du fichier"];
+            Flight::redirect('/user/budgets');
+            return;
+        }
+
+        $filePath = $_FILES['budget_file']['tmp_name'];
+        try {
+            $report = $this->importModel->importBudgets($id_departement, $filePath);
+            if (empty($report['errors'])) {
+                $_SESSION['budget_success'] = "Budgets importés avec succès : {$report['success']} lignes traitées.";
+            } else {
+                $_SESSION['budget_error'] = array_merge(["Importation partielle : {$report['success']} lignes réussies"], $report['errors']);
+            }
+        } catch (Exception $e) {
+            $_SESSION['budget_error'] = ["Erreur lors de l'importation : " . $e->getMessage()];
+        }
+
+        Flight::redirect('/user/budgets');
+    }
+
+    public function importTransactions()
+    {
+        $id_departement = $_SESSION['utilisateur']['id_departement'];
+        if (!isset($_FILES['transaction_file']) || $_FILES['transaction_file']['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['finance_error'] = ["Erreur lors du téléchargement du fichier"];
+            Flight::redirect('/user/finances');
+            return;
+        }
+
+        $filePath = $_FILES['transaction_file']['tmp_name'];
+        try {
+            $report = $this->importModel->importTransactions($id_departement, $filePath);
+            if (empty($report['errors'])) {
+                $_SESSION['finance_success'] = "Transactions importées avec succès : {$report['success']} lignes traitées.";
+            } else {
+                $_SESSION['finance_error'] = array_merge(["Importation partielle : {$report['success']} lignes réussies"], $report['errors']);
+            }
+        } catch (Exception $e) {
+            $_SESSION['finance_error'] = ["Erreur lors de l'importation : " . $e->getMessage()];
+        }
+
+        Flight::redirect('/user/finances');
+    }
 }

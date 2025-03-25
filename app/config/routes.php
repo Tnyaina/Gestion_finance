@@ -185,3 +185,28 @@ Flight::route('POST /admin/export_month', function() {
     $controller = new AdminController();
     $controller->exportMonth();
 });
+
+Flight::route('GET /user/export/dashboard/pdf', function() {
+    $controller = new UserController();
+    $controller->exportDashboardToPDF();
+});
+
+Flight::route('GET /user/export/budgets/pdf', function() {
+    $controller = new UserController();
+    $controller->exportBudgetsToPDF();
+});
+
+Flight::route('GET /user/export/finances/pdf', function() {
+    $controller = new UserController();
+    $controller->exportFinancesToPDF();
+});
+
+Flight::route('POST /user/budgets/import', function() {
+    $controller = new UserController();
+    $controller->importBudgets();
+});
+
+Flight::route('POST /user/finances/import', function() {
+    $controller = new UserController();
+    $controller->importTransactions();
+});

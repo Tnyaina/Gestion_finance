@@ -1,20 +1,24 @@
 <!-- app/views/user/dashboard.php -->
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tableau de bord Utilisateur - Gestion Financière</title>
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/dashboard.css">
     <style>
         .dashboard-container {
             max-width: 1200px;
             margin: 50px auto;
             padding: 20px;
         }
+
         .periode-section {
             margin-bottom: 40px;
         }
+
         .departement-title {
             font-size: 2.5rem;
             font-weight: bold;
@@ -24,6 +28,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="dashboard-container">
@@ -62,6 +67,51 @@
                     </div>
                 </div>
             </form>
+
+            <!-- Bouton pour ouvrir la modale -->
+            <div class="form-group col-md-3 align-self-end">
+                <button type="button" class="btn btn-success" data-toggle="modal" data-target="#exportDashboardModal">Exporter en PDF</button>
+            </div>
+
+            <!-- Modale pour Bootstrap 3.5 -->
+            <div class="modal fade" id="exportDashboardModal" tabindex="-1" role="dialog" aria-labelledby="exportDashboardModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                            <h4 class="modal-title" id="exportDashboardModalLabel">Exporter le tableau de bord</h4>
+                        </div>
+                        <div class="modal-body">
+                            <p>Choisissez une option d'exportation :</p>
+                            <a href="<?php echo BASE_URL; ?>/user/export/dashboard/pdf?all=true" class="btn btn-primary btn-block mb-3">Exporter toutes les périodes</a>
+                            <form action="<?php echo BASE_URL; ?>/user/export/dashboard/pdf" method="GET">
+                                <div class="form-group">
+                                    <label for="mois_export">Mois</label>
+                                    <select class="form-control" id="mois_export" name="mois">
+                                        <option value="">Sélectionner un mois</option>
+                                        <?php for ($i = 1; $i <= 12; $i++): ?>
+                                            <option value="<?php echo $i; ?>"><?php echo sprintf("%02d", $i); ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="annee_export">Année</label>
+                                    <select class="form-control" id="annee_export" name="annee">
+                                        <option value="">Sélectionner une année</option>
+                                        <?php for ($i = date('Y'); $i >= 2020; $i--): ?>
+                                            <option value="<?php echo $i; ?>"><?php echo $i; ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-block">Exporter la période sélectionnée</button>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Affichage des périodes -->
             <?php if (empty($periodes)): ?>
@@ -120,5 +170,8 @@
             <a href="<?php echo BASE_URL; ?>/logout" class="btn btn-danger">Se déconnecter</a>
         </div>
     </div>
+    <script src="<?php echo BASE_URL; ?>/assets/js/jquery.min.js"></script>
+    <script src="<?php echo BASE_URL; ?>/assets/js/bootstrap.min.js"></script>
 </body>
+
 </html>
