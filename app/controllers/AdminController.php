@@ -124,6 +124,8 @@ class AdminController
             // Récupérer les gains et dépenses pour la période sélectionnée
             $data['gains'] = $this->utilisateurModel->getAllGains($mois, $annee);
             $data['depenses'] = $this->utilisateurModel->getAllDepenses($mois, $annee);
+            $data['gainsRealises'] = $this->utilisateurModel->getAllGainsRealises($mois, $annee);
+            $data['depensesRealises'] = $this->utilisateurModel->getAllDepensesRealisees($mois, $annee);
         } else {
             foreach ($departements as $departement) {
                 $id_departement = $departement['id_departement'];

@@ -255,9 +255,12 @@ class UtilisateurModel
     public function addTransaction($id_departement, $mois, $annee, $id_categorie, $montant, $description)
     {
         try {
+            $this->db->beginTransaction();
+
+            // Ajouter la transaction
             $stmt = $this->db->prepare(
                 "INSERT INTO transactions (id_departement, mois, annee, id_categorie, montant, description) 
-                 VALUES (:id_departement, :mois, :annee, :id_categorie, :montant, :description)"
+             VALUES (:id_departement, :mois, :annee, :id_categorie, :montant, :description)"
             );
             $stmt->execute([
                 'id_departement' => $id_departement,
@@ -267,8 +270,81 @@ class UtilisateurModel
                 'montant' => $montant,
                 'description' => $description
             ]);
-            return $this->db->lastInsertId();
+            $id_transaction = $this->db->lastInsertId();
+
+            // Récupérer le type de la catégorie (gain ou dépense)
+            $stmtCat = $this->db->prepare("SELECT type FROM categories WHERE id_categorie = :id_categorie");
+            $stmtCat->execute(['id_categorie' => $id_categorie]);
+            $typeCategorie = $stmtCat->fetchColumn();
+
+            // Vérifier si une entrée existe déjà dans situation_globale pour ce mois/année
+            $stmtCheck = $this->db->prepare("SELECT COUNT(*) FROM situation_globale WHERE mois = :mois AND annee = :annee");
+            $stmtCheck->execute(['mois' => $mois, 'annee' => $annee]);
+            $exists = $stmtCheck->fetchColumn() > 0;
+
+            if ($exists) {
+                // Mettre à jour la situation globale existante
+                $fieldToUpdate = ($typeCategorie === 'gain') ? 'gains_realises' : 'depenses_realisees';
+                $stmtUpdate = $this->db->prepare(
+                    "UPDATE situation_globale 
+                 SET {$fieldToUpdate} = {$fieldToUpdate} + :montant 
+                 WHERE mois = :mois AND annee = :annee"
+                );
+                $stmtUpdate->execute([
+                    'montant' => $montant,
+                    'mois' => $mois,
+                    'annee' => $annee
+                ]);
+
+                // Recalculer le solde final
+                $stmtRecalc = $this->db->prepare(
+                    "UPDATE situation_globale 
+                 SET solde_final_realise = solde_depart_realise + gains_realises - depenses_realisees,
+                     solde_depart_mois_suivant = solde_depart_realise + gains_realises - depenses_realisees
+                 WHERE mois = :mois AND annee = :annee"
+                );
+                $stmtRecalc->execute(['mois' => $mois, 'annee' => $annee]);
+            } else {
+                // Créer une nouvelle entrée dans situation_globale
+                // Déterminer le solde de départ en fonction du mois précédent
+                $moisPrecedent = ($mois == 1) ? 12 : $mois - 1;
+                $anneePrecedente = ($mois == 1) ? $annee - 1 : $annee;
+
+                $stmtPrev = $this->db->prepare("SELECT solde_depart_mois_suivant FROM situation_globale 
+                                          WHERE mois = :mois AND annee = :annee");
+                $stmtPrev->execute(['mois' => $moisPrecedent, 'annee' => $anneePrecedente]);
+                $prevSituation = $stmtPrev->fetch(PDO::FETCH_ASSOC);
+                $soldeDepart = $prevSituation ? $prevSituation['solde_depart_mois_suivant'] : 0;
+
+                $gainsRealises = ($typeCategorie === 'gain') ? $montant : 0;
+                $depensesRealisees = ($typeCategorie === 'depense') ? $montant : 0;
+                $soldeFinalRealise = $soldeDepart + $gainsRealises - $depensesRealisees;
+
+                $stmtInsert = $this->db->prepare(
+                    "INSERT INTO situation_globale (mois, annee, solde_depart_previsionnel, gains_previsionnels, 
+                depenses_previsionnelles, solde_final_previsionnel, solde_depart_realise, gains_realises, 
+                depenses_realisees, solde_final_realise, solde_depart_mois_suivant) 
+                VALUES (:mois, :annee, :sdp, :gp, :dp, :sfp, :sdr, :gr, :dr, :sfr, :sdms)"
+                );
+                $stmtInsert->execute([
+                    'mois' => $mois,
+                    'annee' => $annee,
+                    'sdp' => 0, // Valeurs prévisionnelles par défaut
+                    'gp' => 0,
+                    'dp' => 0,
+                    'sfp' => 0,
+                    'sdr' => $soldeDepart,
+                    'gr' => $gainsRealises,
+                    'dr' => $depensesRealisees,
+                    'sfr' => $soldeFinalRealise,
+                    'sdms' => $soldeFinalRealise
+                ]);
+            }
+
+            $this->db->commit();
+            return $id_transaction;
         } catch (Exception $e) {
+            $this->db->rollBack();
             throw new Exception("Erreur lors de l'ajout de la transaction: " . $e->getMessage());
         }
     }
@@ -276,10 +352,32 @@ class UtilisateurModel
     public function updateTransaction($id_transaction, $id_departement, $mois, $annee, $id_categorie, $montant, $description)
     {
         try {
+            $this->db->beginTransaction();
+
+            // Récupérer l'ancienne transaction
+            $stmtOld = $this->db->prepare(
+                "SELECT t.*, c.type AS type_categorie 
+             FROM transactions t 
+             JOIN categories c ON t.id_categorie = c.id_categorie
+             WHERE t.id_transaction = :id_transaction AND t.id_departement = :id_departement"
+            );
+            $stmtOld->execute(['id_transaction' => $id_transaction, 'id_departement' => $id_departement]);
+            $oldTrans = $stmtOld->fetch(PDO::FETCH_ASSOC);
+
+            if (!$oldTrans) {
+                throw new Exception("Transaction introuvable");
+            }
+
+            // Récupérer le type de la nouvelle catégorie
+            $stmtCat = $this->db->prepare("SELECT type FROM categories WHERE id_categorie = :id_categorie");
+            $stmtCat->execute(['id_categorie' => $id_categorie]);
+            $newTypeCategorie = $stmtCat->fetchColumn();
+
+            // Mettre à jour la transaction
             $stmt = $this->db->prepare(
                 "UPDATE transactions 
-                 SET mois = :mois, annee = :annee, id_categorie = :id_categorie, montant = :montant, description = :description 
-                 WHERE id_transaction = :id_transaction AND id_departement = :id_departement"
+             SET mois = :mois, annee = :annee, id_categorie = :id_categorie, montant = :montant, description = :description 
+             WHERE id_transaction = :id_transaction AND id_departement = :id_departement"
             );
             $stmt->execute([
                 'mois' => $mois,
@@ -290,8 +388,107 @@ class UtilisateurModel
                 'id_transaction' => $id_transaction,
                 'id_departement' => $id_departement
             ]);
+
+            // Traiter l'ancienne période - soustraire le montant de l'ancienne transaction
+            $oldMois = $oldTrans['mois'];
+            $oldAnnee = $oldTrans['annee'];
+            $oldMontant = $oldTrans['montant'];
+            $oldTypeCategorie = $oldTrans['type_categorie'];
+
+            $stmtCheckOld = $this->db->prepare("SELECT COUNT(*) FROM situation_globale WHERE mois = :mois AND annee = :annee");
+            $stmtCheckOld->execute(['mois' => $oldMois, 'annee' => $oldAnnee]);
+            $oldExists = $stmtCheckOld->fetchColumn() > 0;
+
+            if ($oldExists) {
+                $fieldToUpdate = ($oldTypeCategorie === 'gain') ? 'gains_realises' : 'depenses_realisees';
+                $stmtUpdateOld = $this->db->prepare(
+                    "UPDATE situation_globale 
+                 SET {$fieldToUpdate} = {$fieldToUpdate} - :montant 
+                 WHERE mois = :mois AND annee = :annee"
+                );
+                $stmtUpdateOld->execute([
+                    'montant' => $oldMontant,
+                    'mois' => $oldMois,
+                    'annee' => $oldAnnee
+                ]);
+
+                // Recalculer le solde final de l'ancienne période
+                $stmtRecalcOld = $this->db->prepare(
+                    "UPDATE situation_globale 
+                 SET solde_final_realise = solde_depart_realise + gains_realises - depenses_realisees,
+                     solde_depart_mois_suivant = solde_depart_realise + gains_realises - depenses_realisees
+                 WHERE mois = :mois AND annee = :annee"
+                );
+                $stmtRecalcOld->execute(['mois' => $oldMois, 'annee' => $oldAnnee]);
+            }
+
+            // Traiter la nouvelle période - ajouter le nouveau montant
+            $stmtCheckNew = $this->db->prepare("SELECT COUNT(*) FROM situation_globale WHERE mois = :mois AND annee = :annee");
+            $stmtCheckNew->execute(['mois' => $mois, 'annee' => $annee]);
+            $newExists = $stmtCheckNew->fetchColumn() > 0;
+
+            if ($newExists) {
+                $fieldToUpdate = ($newTypeCategorie === 'gain') ? 'gains_realises' : 'depenses_realisees';
+                $stmtUpdateNew = $this->db->prepare(
+                    "UPDATE situation_globale 
+                 SET {$fieldToUpdate} = {$fieldToUpdate} + :montant 
+                 WHERE mois = :mois AND annee = :annee"
+                );
+                $stmtUpdateNew->execute([
+                    'montant' => $montant,
+                    'mois' => $mois,
+                    'annee' => $annee
+                ]);
+
+                // Recalculer le solde final de la nouvelle période
+                $stmtRecalcNew = $this->db->prepare(
+                    "UPDATE situation_globale 
+                 SET solde_final_realise = solde_depart_realise + gains_realises - depenses_realisees,
+                     solde_depart_mois_suivant = solde_depart_realise + gains_realises - depenses_realisees
+                 WHERE mois = :mois AND annee = :annee"
+                );
+                $stmtRecalcNew->execute(['mois' => $mois, 'annee' => $annee]);
+            } else {
+                // Créer une nouvelle entrée dans situation_globale pour la nouvelle période
+                // Déterminer le solde de départ en fonction du mois précédent
+                $moisPrecedent = ($mois == 1) ? 12 : $mois - 1;
+                $anneePrecedente = ($mois == 1) ? $annee - 1 : $annee;
+
+                $stmtPrev = $this->db->prepare("SELECT solde_depart_mois_suivant FROM situation_globale 
+                                          WHERE mois = :mois AND annee = :annee");
+                $stmtPrev->execute(['mois' => $moisPrecedent, 'annee' => $anneePrecedente]);
+                $prevSituation = $stmtPrev->fetch(PDO::FETCH_ASSOC);
+                $soldeDepart = $prevSituation ? $prevSituation['solde_depart_mois_suivant'] : 0;
+
+                $gainsRealises = ($newTypeCategorie === 'gain') ? $montant : 0;
+                $depensesRealisees = ($newTypeCategorie === 'depense') ? $montant : 0;
+                $soldeFinalRealise = $soldeDepart + $gainsRealises - $depensesRealisees;
+
+                $stmtInsert = $this->db->prepare(
+                    "INSERT INTO situation_globale (mois, annee, solde_depart_previsionnel, gains_previsionnels, 
+                depenses_previsionnelles, solde_final_previsionnel, solde_depart_realise, gains_realises, 
+                depenses_realisees, solde_final_realise, solde_depart_mois_suivant) 
+                VALUES (:mois, :annee, :sdp, :gp, :dp, :sfp, :sdr, :gr, :dr, :sfr, :sdms)"
+                );
+                $stmtInsert->execute([
+                    'mois' => $mois,
+                    'annee' => $annee,
+                    'sdp' => 0, // Valeurs prévisionnelles par défaut
+                    'gp' => 0,
+                    'dp' => 0,
+                    'sfp' => 0,
+                    'sdr' => $soldeDepart,
+                    'gr' => $gainsRealises,
+                    'dr' => $depensesRealisees,
+                    'sfr' => $soldeFinalRealise,
+                    'sdms' => $soldeFinalRealise
+                ]);
+            }
+
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
+            $this->db->rollBack();
             throw new Exception("Erreur lors de la mise à jour de la transaction: " . $e->getMessage());
         }
     }
@@ -299,10 +496,63 @@ class UtilisateurModel
     public function deleteTransaction($id_transaction, $id_departement)
     {
         try {
+            $this->db->beginTransaction();
+
+            // Récupérer les informations de la transaction avant de la supprimer
+            $stmtTrans = $this->db->prepare(
+                "SELECT t.*, c.type AS type_categorie 
+             FROM transactions t 
+             JOIN categories c ON t.id_categorie = c.id_categorie
+             WHERE t.id_transaction = :id_transaction AND t.id_departement = :id_departement"
+            );
+            $stmtTrans->execute(['id_transaction' => $id_transaction, 'id_departement' => $id_departement]);
+            $transaction = $stmtTrans->fetch(PDO::FETCH_ASSOC);
+
+            if (!$transaction) {
+                throw new Exception("Transaction introuvable");
+            }
+
+            // Supprimer la transaction
             $stmt = $this->db->prepare("DELETE FROM transactions WHERE id_transaction = :id_transaction AND id_departement = :id_departement");
             $stmt->execute(['id_transaction' => $id_transaction, 'id_departement' => $id_departement]);
+
+            // Mettre à jour la situation globale - soustraire le montant
+            $mois = $transaction['mois'];
+            $annee = $transaction['annee'];
+            $montant = $transaction['montant'];
+            $typeCategorie = $transaction['type_categorie'];
+
+            $stmtCheck = $this->db->prepare("SELECT COUNT(*) FROM situation_globale WHERE mois = :mois AND annee = :annee");
+            $stmtCheck->execute(['mois' => $mois, 'annee' => $annee]);
+            $exists = $stmtCheck->fetchColumn() > 0;
+
+            if ($exists) {
+                $fieldToUpdate = ($typeCategorie === 'gain') ? 'gains_realises' : 'depenses_realisees';
+                $stmtUpdate = $this->db->prepare(
+                    "UPDATE situation_globale 
+                 SET {$fieldToUpdate} = {$fieldToUpdate} - :montant 
+                 WHERE mois = :mois AND annee = :annee"
+                );
+                $stmtUpdate->execute([
+                    'montant' => $montant,
+                    'mois' => $mois,
+                    'annee' => $annee
+                ]);
+
+                // Recalculer le solde final
+                $stmtRecalc = $this->db->prepare(
+                    "UPDATE situation_globale 
+                 SET solde_final_realise = solde_depart_realise + gains_realises - depenses_realisees,
+                     solde_depart_mois_suivant = solde_depart_realise + gains_realises - depenses_realisees
+                 WHERE mois = :mois AND annee = :annee"
+                );
+                $stmtRecalc->execute(['mois' => $mois, 'annee' => $annee]);
+            }
+
+            $this->db->commit();
             return true;
         } catch (Exception $e) {
+            $this->db->rollBack();
             throw new Exception("Erreur lors de la suppression de la transaction: " . $e->getMessage());
         }
     }
@@ -744,6 +994,82 @@ class UtilisateurModel
         }
 
         $query .= " ORDER BY b.annee DESC, b.mois DESC, d.nom, c.nom";
+
+        $stmt = $this->db->prepare($query);
+        if ($mois && $annee) {
+            $stmt->bindValue(':mois', $mois, \PDO::PARAM_INT);
+            $stmt->bindValue(':annee', $annee, \PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function getAllGainsRealises($mois = null, $annee = null)
+    {
+        $query = "
+    SELECT 
+        t.id_transaction,
+        t.id_departement,
+        d.nom AS nom_departement,
+        t.mois,
+        t.annee,
+        c.id_categorie,
+        c.nom AS categorie_gain,
+        t.montant,
+        t.description,
+        DATE_FORMAT(CONCAT(t.annee, '-', t.mois, '-01'), '%Y-%m') AS periode
+    FROM 
+        transactions t
+    JOIN 
+        categories c ON t.id_categorie = c.id_categorie
+    JOIN 
+        departements d ON t.id_departement = d.id_departement
+    WHERE 
+        c.type = 'gain'";
+
+        if ($mois && $annee) {
+            $query .= " AND t.mois = :mois AND t.annee = :annee";
+        }
+
+        $query .= " ORDER BY t.annee DESC, t.mois DESC, d.nom, c.nom";
+
+        $stmt = $this->db->prepare($query);
+        if ($mois && $annee) {
+            $stmt->bindValue(':mois', $mois, \PDO::PARAM_INT);
+            $stmt->bindValue(':annee', $annee, \PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function getAllDepensesRealisees($mois = null, $annee = null)
+    {
+        $query = "
+    SELECT 
+        t.id_transaction,
+        t.id_departement,
+        d.nom AS nom_departement,
+        t.mois,
+        t.annee,
+        c.id_categorie,
+        c.nom AS categorie_depense,
+        t.montant,
+        t.description,
+        DATE_FORMAT(CONCAT(t.annee, '-', t.mois, '-01'), '%Y-%m') AS periode
+    FROM 
+        transactions t
+    JOIN 
+        categories c ON t.id_categorie = c.id_categorie
+    JOIN 
+        departements d ON t.id_departement = d.id_departement
+    WHERE 
+        c.type = 'depense'";
+
+        if ($mois && $annee) {
+            $query .= " AND t.mois = :mois AND t.annee = :annee";
+        }
+
+        $query .= " ORDER BY t.annee DESC, t.mois DESC, d.nom, c.nom";
 
         $stmt = $this->db->prepare($query);
         if ($mois && $annee) {

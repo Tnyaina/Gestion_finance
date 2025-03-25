@@ -240,7 +240,7 @@
 
             <!-- Section Gains -->
             <div class="details-section" id="gains-section">
-                <h3>Liste des Gains</h3>
+                <h3>Liste des Gains Previsionnels</h3>
                 <?php if (empty($gains)): ?>
                     <p class="text-center">Aucun gain enregistré pour cette période.</p>
                 <?php else: ?>
@@ -252,7 +252,6 @@
                                 <th>Catégorie</th>
                                 <th>Montant (€)</th>
                                 <th>Description</th>
-                                <th>Statut Budget</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -263,17 +262,45 @@
                                     <td><?php echo htmlspecialchars($gain['categorie_gain']); ?></td>
                                     <td><?php echo number_format($gain['montant'], 2); ?></td>
                                     <td><?php echo htmlspecialchars($gain['description']); ?></td>
-                                    <td><?php echo htmlspecialchars($gain['statut_budget']); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
                 <?php endif; ?>
             </div>
-
+            <!-- Section Gains -->
+            <div class="details-section" id="gains-section">
+                <h3>Liste des Gains Realises</h3>
+                <?php if (empty($gainsRealises)): ?>
+                    <p class="text-center">Aucun gain enregistré pour cette période.</p>
+                <?php else: ?>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Département</th>
+                                <th>Période</th>
+                                <th>Catégorie</th>
+                                <th>Montant (€)</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($gainsRealises as $gain): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($gain['nom_departement']); ?></td>
+                                    <td><?php echo htmlspecialchars($gain['mois']); ?>/<?php echo htmlspecialchars($gain['annee']); ?></td>
+                                    <td><?php echo htmlspecialchars($gain['categorie_gain']); ?></td>
+                                    <td><?php echo number_format($gain['montant'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($gain['description']); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
             <!-- Section Dépenses -->
             <div class="details-section" id="depenses-section">
-                <h3>Liste des Dépenses</h3>
+                <h3>Liste des Dépenses Previsionnels</h3>
                 <?php if (empty($depenses)): ?>
                     <p class="text-center">Aucune dépense enregistrée pour cette période.</p>
                 <?php else: ?>
@@ -285,7 +312,6 @@
                                 <th>Catégorie</th>
                                 <th>Montant (€)</th>
                                 <th>Description</th>
-                                <th>Statut Budget</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -296,7 +322,36 @@
                                     <td><?php echo htmlspecialchars($depense['categorie_depense']); ?></td>
                                     <td><?php echo number_format($depense['montant'], 2); ?></td>
                                     <td><?php echo htmlspecialchars($depense['description']); ?></td>
-                                    <td><?php echo htmlspecialchars($depense['statut_budget']); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
+             <!-- Section Dépenses Realises -->
+             <div class="details-section" id="depenses-section">
+                <h3>Liste des Dépenses Realises</h3>
+                <?php if (empty($depensesRealises)): ?>
+                    <p class="text-center">Aucune dépense enregistrée pour cette période.</p>
+                <?php else: ?>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Département</th>
+                                <th>Période</th>
+                                <th>Catégorie</th>
+                                <th>Montant (€)</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($depensesRealises as $depense): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($depense['nom_departement']); ?></td>
+                                    <td><?php echo htmlspecialchars($depense['mois']); ?>/<?php echo htmlspecialchars($depense['annee']); ?></td>
+                                    <td><?php echo htmlspecialchars($depense['categorie_depense']); ?></td>
+                                    <td><?php echo number_format($depense['montant'], 2); ?></td>
+                                    <td><?php echo htmlspecialchars($depense['description']); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>

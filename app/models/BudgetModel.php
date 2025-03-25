@@ -67,10 +67,114 @@ class BudgetModel
     public function approveBudget($id_budget)
     {
         try {
-            $stmt = $this->db->prepare(
+            // Store the status update statement in a separate variable
+            $stmtStatus = $this->db->prepare(
                 "UPDATE budgets SET statut = 'approuve' WHERE id_budget = :id_budget"
             );
-            $stmt->execute(['id_budget' => $id_budget]);
+
+            // Récupérer le budget
+            $budget = $this->getBudgetById($id_budget);
+            if (!$budget) {
+                throw new Exception("Budget introuvable.");
+            }
+
+            $mois = $budget['mois'];
+            $annee = $budget['annee'];
+            $id_departement = $budget['id_departement'];
+
+            // Calculer les sommes des détails du budget
+            $details = $this->getBudgetDetails($id_budget);
+            $gains_previsionnels = 0;
+            $depenses_previsionnelles = 0;
+            foreach ($details as $detail) {
+                if ($detail['type_categorie'] === 'gain') {
+                    $gains_previsionnels += $detail['montant'];
+                } else {
+                    $depenses_previsionnelles += $detail['montant'];
+                }
+            }
+
+            // Récupérer les transactions réelles
+            $stmtTrans = $this->db->prepare(
+                "SELECT t.*, c.type FROM transactions t 
+            JOIN categories c ON t.id_categorie = c.id_categorie
+            WHERE t.id_departement = :id_departement 
+            AND t.mois = :mois AND t.annee = :annee"
+            );
+            $stmtTrans->execute(['id_departement' => $id_departement, 'mois' => $mois, 'annee' => $annee]);
+            $transactions = $stmtTrans->fetchAll(PDO::FETCH_ASSOC);
+
+            $gains_realises = 0;
+            $depenses_realisees = 0;
+            foreach ($transactions as $transaction) {
+                if ($transaction['type'] === 'gain') {
+                    $gains_realises += $transaction['montant'];
+                } else {
+                    $depenses_realisees += $transaction['montant'];
+                }
+            }
+
+            // Vérifier si un mois précédent existe
+            $mois_precedent = $mois - 1;
+            $annee_precedente = $annee;
+            if ($mois_precedent == 0) {
+                $mois_precedent = 12;
+                $annee_precedente--;
+            }
+
+            $stmtPrev = $this->db->prepare("SELECT solde_depart_mois_suivant FROM situation_globale 
+                                   WHERE mois = :mois AND annee = :annee");
+            $stmtPrev->execute(['mois' => $mois_precedent, 'annee' => $annee_precedente]);
+            $situation_precedente = $stmtPrev->fetch(PDO::FETCH_ASSOC);
+
+            // Déterminer le solde de départ
+            $solde_depart_realise = $situation_precedente ?
+                $situation_precedente['solde_depart_mois_suivant'] : $budget['solde_depart'];
+
+            // Calculer les soldes finaux
+            $solde_final_previsionnel = $budget['solde_depart'] + $gains_previsionnels - $depenses_previsionnelles;
+            $solde_final_realise = $solde_depart_realise + $gains_realises - $depenses_realisees;
+            $solde_depart_mois_suivant = $solde_final_realise;
+
+            // Vérifier si une situation globale existe pour ce mois
+            $stmtCheck = $this->db->prepare("SELECT COUNT(*) FROM situation_globale WHERE mois = :mois AND annee = :annee");
+            $stmtCheck->execute(['mois' => $mois, 'annee' => $annee]);
+            $exists = (bool) $stmtCheck->fetchColumn();
+
+            if ($exists) {
+                // Mise à jour
+                $stmtSituation = $this->db->prepare("UPDATE situation_globale SET 
+                solde_depart_previsionnel = :sdp, gains_previsionnels = :gp, 
+                depenses_previsionnelles = :dp, solde_final_previsionnel = :sfp,
+                solde_depart_realise = :sdr, gains_realises = :gr, 
+                depenses_realisees = :dr, solde_final_realise = :sfr,
+                solde_depart_mois_suivant = :sdms
+                WHERE mois = :mois AND annee = :annee");
+            } else {
+                // Création
+                $stmtSituation = $this->db->prepare("INSERT INTO situation_globale 
+                (mois, annee, solde_depart_previsionnel, gains_previsionnels, 
+                depenses_previsionnelles, solde_final_previsionnel, solde_depart_realise, 
+                gains_realises, depenses_realisees, solde_final_realise, solde_depart_mois_suivant) 
+                VALUES (:mois, :annee, :sdp, :gp, :dp, :sfp, :sdr, :gr, :dr, :sfr, :sdms)");
+            }
+
+            $stmtSituation->execute([
+                'mois' => $mois,
+                'annee' => $annee,
+                'sdp' => $budget['solde_depart'],
+                'gp' => $gains_previsionnels,
+                'dp' => $depenses_previsionnelles,
+                'sfp' => $solde_final_previsionnel,
+                'sdr' => $solde_depart_realise,
+                'gr' => $gains_realises,
+                'dr' => $depenses_realisees,
+                'sfr' => $solde_final_realise,
+                'sdms' => $solde_depart_mois_suivant
+            ]);
+
+            // Now execute the status update statement
+            $stmtStatus->execute(['id_budget' => $id_budget]);
             return true;
         } catch (Exception $e) {
             throw new Exception("Erreur lors de l'approbation du budget : " . $e->getMessage());
