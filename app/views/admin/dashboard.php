@@ -1,6 +1,7 @@
 <!-- app/views/admin/dashboard.php -->
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,24 +13,30 @@
             margin: 50px auto;
             padding: 20px;
         }
+
         .periode-section {
             margin-bottom: 40px;
         }
+
         .departement-title {
             font-size: 2rem;
             font-weight: bold;
             color: #007bff;
             margin-bottom: 20px;
         }
-        .global-section, .details-section {
+
+        .global-section,
+        .details-section {
             margin-bottom: 60px;
         }
+
         .future-note {
             font-style: italic;
             color: #555;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="dashboard-container">
@@ -77,290 +84,275 @@
             <!-- Situation Globale -->
             <div class="global-section">
                 <h3>Situation Globale</h3>
-                <?php if ($situationGlobale === null): ?>
-                    <p class="text-center">Aucune donnée globale disponible pour cette période. Veuillez sélectionner un mois et une année.</p>
-                <?php elseif(isset($situationGlobale[1]) && $situationGlobale[1] !== null): ?>
-                    <?php for ($i=0; $i < count($situationGlobale); $i++) { ?>
-                        <div class="periode-section">
-                        <h4>Récapitulatif financier global pour <?php echo (new \DateTime())->setDate($annee, $mois, 1)->format('F Y'); ?></h4>
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Rubrique</th>
-                                    <th>Prévisions</th>
-                                    <th>Réalisations</th>
-                                    <th>Écarts</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Solde de départ (€)</td>
-                                    <td><?php echo number_format($situationGlobale[$i]['solde_depart_previsionnel'], 2); ?></td>
-                                    <td><?php echo number_format($situationGlobale[$i]['solde_depart_realise'], 2); ?></td>
-                                    <td>0.00</td>
-                                </tr>
-                                <tr>
-                                    <td><a href="#gains-section">Gains (€)</a></td>
-                                    <td><?php echo number_format($situationGlobale[$i]['gains_previsionnels'], 2); ?></td>
-                                    <td><?php echo number_format($situationGlobale[$i]['gains_realises'], 2); ?></td>
-                                    <td <?php echo ($situationGlobale[$i]['gains_realises'] - $situationGlobale[$i]['gains_previsionnels']) < 0 ? 'style="color: red;"' : ''; ?>>
-                                        <?php echo number_format(abs($situationGlobale[$i]['gains_realises'] - $situationGlobale[$i]['gains_previsionnels']), 2); ?>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><a href="#depenses-section">Dépenses (€)</a></td>
-                                    <td><?php echo number_format($situationGlobale[$i]['depenses_previsionnelles'], 2); ?></td>
-                                    <td><?php echo number_format($situationGlobale[$i]['depenses_realisees'], 2); ?></td>
-                                    <td <?php echo ($situationGlobale[$i]['depenses_realisees'] - $situationGlobale[$i]['depenses_previsionnelles']) < 0 ? 'style="color: red;"' : ''; ?>>
-                                        <?php echo number_format(abs($situationGlobale[$i]['depenses_realisees'] - $situationGlobale[$i]['depenses_previsionnelles']), 2); ?>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Solde final (€)</td>
-                                    <td><?php echo number_format($situationGlobale[$i]['solde_final_previsionnel'], 2); ?></td>
-                                    <td><?php echo number_format($situationGlobale[$i]['solde_final_realise'], 2); ?></td>
-                                    <td <?php echo ($situationGlobale[$i]['solde_final_realise'] - $situationGlobale[$i]['solde_final_previsionnel']) < 0 ? 'style="color: red;"' : ''; ?>>
-                                        <?php echo number_format(abs($situationGlobale[$i]['solde_final_realise'] - $situationGlobale[0]['solde_final_previsionnel']), 2); ?>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <?php }?>
-                    <?php else: ?>
-                    <div class="periode-section">
-                        <h4>Récapitulatif financier global pour <?php echo (new \DateTime())->setDate($annee, $mois, 1)->format('F Y'); ?></h4>
-                        <table class="table table-bordered">
-                            <thead>
-                                <tr>
-                                    <th>Rubrique</th>
-                                    <th>Prévisions</th>
-                                    <th>Réalisations</th>
-                                    <th>Écarts</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Solde de départ (€)</td>
-                                    <td><?php echo number_format($situationGlobale[0]['solde_depart_previsionnel'], 2); ?></td>
-                                    <td><?php echo number_format($situationGlobale[0]['solde_depart_realise'], 2); ?></td>
-                                    <td>0.00</td>
-                                </tr>
-                                <tr>
-                                    <td><a href="#gains-section">Gains (€)</a></td>
-                                    <td><?php echo number_format($situationGlobale[0]['gains_previsionnels'], 2); ?></td>
-                                    <td><?php echo number_format($situationGlobale[0]['gains_realises'], 2); ?></td>
-                                    <td <?php echo ($situationGlobale[0]['gains_realises'] - $situationGlobale[0]['gains_previsionnels']) < 0 ? 'style="color: red;"' : ''; ?>>
-                                        <?php echo number_format(abs($situationGlobale[0]['gains_realises'] - $situationGlobale[0]['gains_previsionnels']), 2); ?>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><a href="#depenses-section">Dépenses (€)</a></td>
-                                    <td><?php echo number_format($situationGlobale[0]['depenses_previsionnelles'], 2); ?></td>
-                                    <td><?php echo number_format($situationGlobale[0]['depenses_realisees'], 2); ?></td>
-                                    <td <?php echo ($situationGlobale[0]['depenses_realisees'] - $situationGlobale[0]['depenses_previsionnelles']) < 0 ? 'style="color: red;"' : ''; ?>>
-                                        <?php echo number_format(abs($situationGlobale[0]['depenses_realisees'] - $situationGlobale[0]['depenses_previsionnelles']), 2); ?>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Solde final (€)</td>
-                                    <td><?php echo number_format($situationGlobale[0]['solde_final_previsionnel'], 2); ?></td>
-                                    <td><?php echo number_format($situationGlobale[0]['solde_final_realise'], 2); ?></td>
-                                    <td <?php echo ($situationGlobale[0]['solde_final_realise'] - $situationGlobale[0]['solde_final_previsionnel']) < 0 ? 'style="color: red;"' : ''; ?>>
-                                        <?php echo number_format(abs($situationGlobale[0]['solde_final_realise'] - $situationGlobale[0]['solde_final_previsionnel']), 2); ?>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </div>
+                <!-- Situation Globale -->
+                <div class="global-section">
+                    <h3>Situation Globale</h3>
+                    <?php if ($situationGlobale === null): ?>
+                        <p class="text-center">Aucune donnée globale disponible pour cette période. Veuillez sélectionner un
+                            mois et une année.</p>
+                    <?php elseif (!empty($situationGlobale)): ?>
+                        <?php
+                        $moisNoms = [
+                            1 => "Janvier",
+                            2 => "Février",
+                            3 => "Mars",
+                            4 => "Avril",
+                            5 => "Mai",
+                            6 => "Juin",
+                            7 => "Juillet",
+                            8 => "Août",
+                            9 => "Septembre",
+                            10 => "Octobre",
+                            11 => "Novembre",
+                            12 => "Décembre"
+                        ];
+                        ?>
+                        <?php foreach ($situationGlobale as $globale): ?>
+                            <div class="periode-section">
+                                <h4>Récapitulatif financier global pour le mois de
+                                    <?php echo $moisNoms[$globale['mois']] . ' ' . $globale['annee']; ?>
+                                </h4>
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Rubrique</th>
+                                            <th>Prévisions</th>
+                                            <th>Réalisations</th>
+                                            <th>Écarts</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Solde de départ (€)</td>
+                                            <td><?php echo number_format($globale['solde_depart_previsionnel'], 2); ?></td>
+                                            <td><?php echo number_format($globale['solde_depart_realise'], 2); ?></td>
+                                            <td>0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <adbd href="#gains-section">Gains (€)</a>
+                                            </td>
+                                            <td><?php echo number_format($globale['gains_previsionnels'], 2); ?></td>
+                                            <td><?php echo number_format($globale['gains_realises'], 2); ?></td>
+                                            <td <?php echo ($globale['gains_realises'] - $globale['gains_previsionnels']) < 0 ? 'style="color: red;"' : ''; ?>>
+                                                <?php echo number_format(abs($globale['gains_realises'] - $globale['gains_previsionnels']), 2); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="#depenses-section">Dépenses (€)</a></td>
+                                            <td><?php echo number_format($globale['depenses_previsionnelles'], 2); ?></td>
+                                            <td><?php echo number_format($globale['depenses_realisees'], 2); ?></td>
+                                            <td <?php echo ($globale['depenses_realisees'] - $globale['depenses_previsionnelles']) < 0 ? 'style="color: red;"' : ''; ?>>
+                                                <?php echo number_format(abs($globale['depenses_realisees'] - $globale['depenses_previsionnelles']), 2); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Solde final (€)</td>
+                                            <td><?php echo number_format($globale['solde_final_previsionnel'], 2); ?></td>
+                                            <td><?php echo number_format($globale['solde_final_realise'], 2); ?></td>
+                                            <td <?php echo ($globale['solde_final_realise'] - $globale['solde_final_previsionnel']) < 0 ? 'style="color: red;"' : ''; ?>>
+                                                <?php echo number_format(abs($globale['solde_final_realise'] - $globale['solde_final_previsionnel']), 2); ?>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
 
-            <!-- Détails par Département -->
-            <div class="details-section">
-                <h3>Détails par Département</h3>
-                <?php if (empty($periodes)): ?>
-                    <p class="text-center">Aucune donnée financière disponible pour les départements.</p>
+                <!-- Détails par Département -->
+                <?php if (empty($periodes) && $mois == null || $annee == null): ?>
                 <?php else: ?>
-                    <?php foreach ($periodes as $periode): ?>
-                        <div class="periode-section">
-                            <h4>Récapitulatif financier pour <?php echo (new \DateTime())->setDate($periode['annee'], $periode['mois'], 1)->format('F Y'); ?> - Département : <?php echo htmlspecialchars($periode['nom_departement']); ?></h4>
-                            <?php
+                    <div class="details-section">
+                        <h3>Détails par Département</h3>
+                        <?php foreach ($periodes as $periode): ?>
+                            <div class="periode-section">
+                                <h4>Récapitulatif financier pour
+                                    <?php echo (new \DateTime())->setDate($periode['annee'], $periode['mois'], 1)->format('F Y'); ?>
+                                    - Département : <?php echo htmlspecialchars($periode['nom_departement']); ?>
+                                </h4>
+                                <?php
                                 $isFuture = ($periode['annee'] > $annee) || ($periode['annee'] == $annee && $periode['mois'] > $mois);
                                 if ($isFuture && !$periode['budget'] && $periode['realisations']['total_gains'] == 0 && $periode['realisations']['total_depenses'] == 0):
-                            ?>
-                                <p class="future-note">Note : Période future sans budget ni transactions. Solde basé sur la période précédente.</p>
-                            <?php endif; ?>
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Rubrique</th>
-                                        <th>Prévisions</th>
-                                        <th>Réalisations</th>
-                                        <th>Écarts</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Solde de départ (€)</td>
-                                        <td><?php echo $periode['budget'] ? number_format($periode['budget']['solde_depart'], 2) : '0.00'; ?></td>
-                                        <td><?php echo number_format($periode['realisations']['solde_depart'], 2); ?></td>
-                                        <td>0.00</td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="#gains-section">Gains (€)</a></td>
-                                        <td><?php echo $periode['budget'] ? number_format($periode['budget']['total_gains'], 2) : '0.00'; ?></td>
-                                        <td><?php echo number_format($periode['realisations']['total_gains'], 2); ?></td>
-                                        <td <?php echo $periode['ecarts']['gains'] < 0 ? 'style="color: red;"' : ''; ?>>
-                                            <?php echo number_format(abs($periode['ecarts']['gains']), 2); ?>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td><a href="#depenses-section">Dépenses (€)</a></td>
-                                        <td><?php echo $periode['budget'] ? number_format($periode['budget']['total_depenses'], 2) : '0.00'; ?></td>
-                                        <td><?php echo number_format($periode['realisations']['total_depenses'], 2); ?></td>
-                                        <td <?php echo $periode['ecarts']['depenses'] < 0 ? 'style="color: red;"' : ''; ?>>
-                                            <?php echo number_format(abs($periode['ecarts']['depenses']), 2); ?>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Solde final (€)</td>
-                                        <td><?php echo $periode['budget'] ? number_format($periode['budget']['solde_final_calculee'], 2) : '0.00'; ?></td>
-                                        <td><?php echo number_format($periode['realisations']['solde_final'], 2); ?></td>
-                                        <td <?php echo $periode['ecarts']['solde_final'] < 0 ? 'style="color: red;"' : ''; ?>>
-                                            <?php echo number_format(abs($periode['ecarts']['solde_final']), 2); ?>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
+                                    ?>
+                                    <p class="future-note">Note : Période future sans budget ni transactions. Solde basé sur la
+                                        période
+                                        précédente.</p>
+                                <?php endif; ?>
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Rubrique</th>
+                                            <th>Prévisions</th>
+                                            <th>Réalisations</th>
+                                            <th>Écarts</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Solde de départ (€)</td>
+                                            <td><?php echo $periode['budget'] ? number_format($periode['budget']['solde_depart'], 2) : '0.00'; ?>
+                                            </td>
+                                            <td><?php echo number_format($periode['realisations']['solde_depart'], 2); ?></td>
+                                            <td>0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="#gains-section">Gains (€)</a></td>
+                                            <td><?php echo $periode['budget'] ? number_format($periode['budget']['total_gains'], 2) : '0.00'; ?>
+                                            </td>
+                                            <td><?php echo number_format($periode['realisations']['total_gains'], 2); ?></td>
+                                            <td <?php echo $periode['ecarts']['gains'] < 0 ? 'style="color: red;"' : ''; ?>>
+                                                <?php echo number_format(abs($periode['ecarts']['gains']), 2); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><a href="#depenses-section">Dépenses (€)</a></td>
+                                            <td><?php echo $periode['budget'] ? number_format($periode['budget']['total_depenses'], 2) : '0.00'; ?>
+                                            </td>
+                                            <td><?php echo number_format($periode['realisations']['total_depenses'], 2); ?></td>
+                                            <td <?php echo $periode['ecarts']['depenses'] < 0 ? 'style="color: red;"' : ''; ?>>
+                                                <?php echo number_format(abs($periode['ecarts']['depenses']), 2); ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Solde final (€)</td>
+                                            <td><?php echo $periode['budget'] ? number_format($periode['budget']['solde_final_calculee'], 2) : '0.00'; ?>
+                                            </td>
+                                            <td><?php echo number_format($periode['realisations']['solde_final'], 2); ?></td>
+                                            <td <?php echo $periode['ecarts']['solde_final'] < 0 ? 'style="color: red;"' : ''; ?>>
+                                                <?php echo number_format(abs($periode['ecarts']['solde_final']), 2); ?>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
 
-            <!-- Section Gains -->
-            <div class="details-section" id="gains-section">
-                <h3>Liste des Gains Previsionnels</h3>
+                <!-- Section Gains -->
                 <?php if (empty($gains)): ?>
-                    <p class="text-center">Aucun gain enregistré pour cette période.</p>
                 <?php else: ?>
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Département</th>
-                                <th>Période</th>
-                                <th>Catégorie</th>
-                                <th>Montant (€)</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($gains as $gain): ?>
+                    <div class="details-section" id="gains-section">
+                        <h3>Liste des Gains Previsionnels</h3>
+                        <table class="table table-bordered">
+                            <thead>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($gain['nom_departement']); ?></td>
-                                    <td><?php echo htmlspecialchars($gain['periode']); ?></td>
-                                    <td><?php echo htmlspecialchars($gain['categorie_gain']); ?></td>
-                                    <td><?php echo number_format($gain['montant'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($gain['description']); ?></td>
+                                    <th>Département</th>
+                                    <th>Période</th>
+                                    <th>Catégorie</th>
+                                    <th>Montant (€)</th>
+                                    <th>Description</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
-            </div>
-            <!-- Section Gains -->
-            <div class="details-section" id="gains-section">
-                <h3>Liste des Gains Realises</h3>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($gains as $gain): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($gain['nom_departement']); ?></td>
+                                        <td><?php echo htmlspecialchars($gain['periode']); ?></td>
+                                        <td><?php echo htmlspecialchars($gain['categorie_gain']); ?></td>
+                                        <td><?php echo number_format($gain['montant'], 2); ?></td>
+                                        <td><?php echo htmlspecialchars($gain['description']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+                <!-- Section Gains -->
                 <?php if (empty($gainsRealises)): ?>
-                    <p class="text-center">Aucun gain enregistré pour cette période.</p>
                 <?php else: ?>
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Département</th>
-                                <th>Période</th>
-                                <th>Catégorie</th>
-                                <th>Montant (€)</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($gainsRealises as $gain): ?>
+                    <div class="details-section" id="gains-section">
+                        <h3>Liste des Gains Realises</h3>
+                        <table class="table table-bordered">
+                            <thead>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($gain['nom_departement']); ?></td>
-                                    <td><?php echo htmlspecialchars($gain['mois']); ?>/<?php echo htmlspecialchars($gain['annee']); ?></td>
-                                    <td><?php echo htmlspecialchars($gain['categorie_gain']); ?></td>
-                                    <td><?php echo number_format($gain['montant'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($gain['description']); ?></td>
+                                    <th>Département</th>
+                                    <th>Période</th>
+                                    <th>Catégorie</th>
+                                    <th>Montant (€)</th>
+                                    <th>Description</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
-            </div>
-            <!-- Section Dépenses -->
-            <div class="details-section" id="depenses-section">
-                <h3>Liste des Dépenses Previsionnels</h3>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($gainsRealises as $gain): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($gain['nom_departement']); ?></td>
+                                        <td><?php echo htmlspecialchars($gain['mois']); ?>/<?php echo htmlspecialchars($gain['annee']); ?>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($gain['categorie_gain']); ?></td>
+                                        <td><?php echo number_format($gain['montant'], 2); ?></td>
+                                        <td><?php echo htmlspecialchars($gain['description']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+                <!-- Section Dépenses -->
                 <?php if (empty($depenses)): ?>
-                    <p class="text-center">Aucune dépense enregistrée pour cette période.</p>
                 <?php else: ?>
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Département</th>
-                                <th>Période</th>
-                                <th>Catégorie</th>
-                                <th>Montant (€)</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($depenses as $depense): ?>
+                    <div class="details-section" id="depenses-section">
+                        <h3>Liste des Dépenses Previsionnels</h3>
+                        <table class="table table-bordered">
+                            <thead>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($depense['nom_departement']); ?></td>
-                                    <td><?php echo htmlspecialchars($depense['periode']); ?></td>
-                                    <td><?php echo htmlspecialchars($depense['categorie_depense']); ?></td>
-                                    <td><?php echo number_format($depense['montant'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($depense['description']); ?></td>
+                                    <th>Département</th>
+                                    <th>Période</th>
+                                    <th>Catégorie</th>
+                                    <th>Montant (€)</th>
+                                    <th>Description</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
-            </div>
-             <!-- Section Dépenses Realises -->
-             <div class="details-section" id="depenses-section">
-                <h3>Liste des Dépenses Realises</h3>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($depenses as $depense): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($depense['nom_departement']); ?></td>
+                                        <td><?php echo htmlspecialchars($depense['periode']); ?></td>
+                                        <td><?php echo htmlspecialchars($depense['categorie_depense']); ?></td>
+                                        <td><?php echo number_format($depense['montant'], 2); ?></td>
+                                        <td><?php echo htmlspecialchars($depense['description']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+                <!-- Section Dépenses Realises -->
                 <?php if (empty($depensesRealises)): ?>
-                    <p class="text-center">Aucune dépense enregistrée pour cette période.</p>
                 <?php else: ?>
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Département</th>
-                                <th>Période</th>
-                                <th>Catégorie</th>
-                                <th>Montant (€)</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($depensesRealises as $depense): ?>
+                    <div class="details-section" id="depenses-section">
+                        <h3>Liste des Dépenses Realises</h3>
+                        <table class="table table-bordered">
+                            <thead>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($depense['nom_departement']); ?></td>
-                                    <td><?php echo htmlspecialchars($depense['mois']); ?>/<?php echo htmlspecialchars($depense['annee']); ?></td>
-                                    <td><?php echo htmlspecialchars($depense['categorie_depense']); ?></td>
-                                    <td><?php echo number_format($depense['montant'], 2); ?></td>
-                                    <td><?php echo htmlspecialchars($depense['description']); ?></td>
+                                    <th>Département</th>
+                                    <th>Période</th>
+                                    <th>Catégorie</th>
+                                    <th>Montant (€)</th>
+                                    <th>Description</th>
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
-            </div>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($depensesRealises as $depense): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($depense['nom_departement']); ?></td>
+                                        <td><?php echo htmlspecialchars($depense['mois']); ?>/<?php echo htmlspecialchars($depense['annee']); ?>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($depense['categorie_depense']); ?></td>
+                                        <td><?php echo number_format($depense['montant'], 2); ?></td>
+                                        <td><?php echo htmlspecialchars($depense['description']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
 
-            <a href="<?php echo BASE_URL; ?>/logout" class="btn btn-danger">Se déconnecter</a>
+                <a href="<?php echo BASE_URL; ?>/logout" class="btn btn-danger">Se déconnecter</a>
+            </div>
         </div>
-    </div>
 </body>
+
 </html>
