@@ -166,7 +166,7 @@ class AdminController
                 }
             }
             // $data['situationGlobale'] = $this->AdminModel->getSituationGlobal(); // Situation Globale
-            $data['situationGlobale'] = null; // Situation Globale
+            $data['situationGlobale'] = $this->AdminModel->getSituationGlobal(); // Situation Globale
             $data['gains'] = $this->utilisateurModel->getAllGains(); // Tous les gains sans filtre
             $data['depenses'] = $this->utilisateurModel->getAllDepenses(); // Toutes les dépenses sans filtre
             $data['mois'] = $mois;
