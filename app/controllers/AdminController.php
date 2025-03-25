@@ -36,6 +36,8 @@ class AdminController
         $mois = Flight::request()->query->mois ?? null;
         $annee = Flight::request()->query->annee ?? null;
 
+        $this->AdminModel->updateSituationGlobale();
+
         $data = [
             'utilisateur' => $_SESSION['utilisateur'],
             'mois' => $mois,
@@ -47,24 +49,27 @@ class AdminController
 
         // Date actuelle pour comparaison
         $currentDate = new \DateTime();
-        $currentMonth = (int)$currentDate->format('m');
-        $currentYear = (int)$currentDate->format('Y');
+        $currentMonth = (int) $currentDate->format('m');
+        $currentYear = (int) $currentDate->format('Y');
 
         // Initialiser les données par département et la situation globale
         $data['periodes'] = [];
-        $globalSummary = [
-            'solde_depart_previsionnel' => 0,
-            'gains_previsionnels' => 0,
-            'depenses_previsionnelles' => 0,
-            'solde_final_previsionnel' => 0,
-            'solde_depart_realise' => 0,
-            'gains_realises' => 0,
-            'depenses_realisees' => 0,
-            'solde_final_realise' => 0
-        ];
 
         if ($mois && $annee) {
             $isFuture = ($annee > $currentYear) || ($annee == $currentYear && $mois > $currentMonth);
+
+            $globalSummary = [
+                'mois' => (int) $mois,  // Ajout de la clé 'mois'
+                'annee' => (int) $annee,  // Ajout de la clé 'annee'
+                'solde_depart_previsionnel' => 0,
+                'gains_previsionnels' => 0,
+                'depenses_previsionnelles' => 0,
+                'solde_final_previsionnel' => 0,
+                'solde_depart_realise' => 0,
+                'gains_realises' => 0,
+                'depenses_realisees' => 0,
+                'solde_final_realise' => 0
+            ];
 
             foreach ($departements as $departement) {
                 $id_departement = $departement['id_departement'];
@@ -94,7 +99,7 @@ class AdminController
 
                 $ecarts = [
                     'solde_depart' => 0,
-                    'gains' => $budget ? ($realisations['total_gains'] - $budget['total_gains']) : $realisations['total_gains'],
+                    'gains' => $budget ? ($realisations['total_gains'] - $budget['total_gains']) : $realisations['total_gains'],    
                     'depenses' => $budget ? ($realisations['total_depenses'] - $budget['total_depenses']) : $realisations['total_depenses'],
                     'solde_final' => $budget ? ($realisations['solde_final'] - $budget['solde_final_calculee']) : $realisations['solde_final']
                 ];
@@ -120,7 +125,7 @@ class AdminController
             }
 
             $data['situationGlobale'] = [$globalSummary];
-            
+
             // Récupérer les gains et dépenses pour la période sélectionnée
             $data['gains'] = $this->utilisateurModel->getAllGains($mois, $annee);
             $data['depenses'] = $this->utilisateurModel->getAllDepenses($mois, $annee);
@@ -165,12 +170,9 @@ class AdminController
                     ];
                 }
             }
-            // $data['situationGlobale'] = $this->AdminModel->getSituationGlobal(); // Situation Globale
             $data['situationGlobale'] = $this->AdminModel->getSituationGlobal(); // Situation Globale
-            $data['gains'] = $this->utilisateurModel->getAllGains(); // Tous les gains sans filtre
-            $data['depenses'] = $this->utilisateurModel->getAllDepenses(); // Toutes les dépenses sans filtre
-            $data['mois'] = $mois;
-            $data['annee'] = $annee;
+            $data['mois'] = null;
+            $data['annee'] = null;
         }
 
         Flight::render('admin/dashboard.php', $data);
@@ -178,8 +180,8 @@ class AdminController
 
     private function getPreviousPeriod($mois, $annee)
     {
-        $mois = (int)$mois;
-        $annee = (int)$annee;
+        $mois = (int) $mois;
+        $annee = (int) $annee;
         if ($mois == 1) {
             return ['mois' => 12, 'annee' => $annee - 1];
         }
@@ -475,7 +477,7 @@ class AdminController
     // Lister les budgets à valider
     public function listBudgets()
     {
-        $budgets = $this->budgetModel->getAllBudgets('en_attente'); 
+        $budgets = $this->budgetModel->getAllBudgets('en_attente');
         $data = [
             'budgets' => $budgets,
             'success' => $_SESSION['budget_success'] ?? null,
