@@ -177,3 +177,18 @@ Flight::route('POST /admin/budgets/edit', function() {
     $controller = new AdminController();
     $controller->editBudget();
 });
+
+Flight::route('GET /user/export/dashboard/pdf', function() {
+    $controller = new UserController();
+    $controller->exportDashboardToPDF();
+});
+
+Flight::route('GET /user/export/budgets/pdf', function() {
+    $controller = new UserController();
+    $controller->exportBudgetsToPDF();
+});
+
+Flight::route('GET /user/export/finances/pdf', function() {
+    $controller = new UserController();
+    $controller->exportFinancesToPDF();
+});
