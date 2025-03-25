@@ -349,10 +349,58 @@
                         </table>
                     <?php endif; ?>
                 </div>
+                <div style="margin-bottom: 20px;">
+    <!-- Bouton Exporter pour une période -->
+<div style="margin-bottom: 20px;">
+    <button id="exportButton" onclick="toggleExportForm()">Exporter une période</button>
+    <button id="exportMonthButton" onclick="toggleExportMonthForm()">Exporter un mois</button>
+</div>
+
+<!-- Formulaire d'exportation (caché par défaut si un mois est sélectionné) -->
+<?php if (!$mois && !$annee) : ?>
+    <div id="exportForm" style="display: none;">
+        <form method="POST" action="<?php echo BASE_URL; ?>/admin/export">
+            <label for="start_date">Date de début :</label>
+            <input type="month" id="start_date" name="start_date" required>
+            <label for="end_date">Date de fin :</label>
+            <input type="month" id="end_date" name="end_date" required>
+            <button type="submit" class="btn btn-primary">Exporter en PDF</button>
+        </form>
+    </div>
+
+    <script>
+        function toggleExportForm() {
+            var form = document.getElementById('exportForm');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+<?php endif; ?>
+
+<!-- Nouveau formulaire pour exporter un mois spécifique -->
+<div id="exportMonthForm" style="display: none;">
+    <form method="POST" action="<?php echo BASE_URL; ?>/admin/export_month">
+        <label for="month_date">Mois :</label>
+        <input type="month" id="month_date" name="month_date" required>
+        <button type="submit">Exporter en PDF</button>
+    </form>
+</div>
+
+<script>
+
+    function toggleExportMonthForm() {
+        var form = document.getElementById('exportMonthForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        document.getElementById('exportForm').style.display = 'none'; // Cacher l'autre formulaire
+    }
+</script>
 
                 <a href="<?php echo BASE_URL; ?>/logout" class="btn btn-danger">Se déconnecter</a>
             </div>
         </div>
+</div>
+
+
+        <!-- Bouton Exporter -->
 </body>
 
 </html>

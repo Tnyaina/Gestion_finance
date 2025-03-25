@@ -99,7 +99,7 @@ class AdminController
 
                 $ecarts = [
                     'solde_depart' => 0,
-                    'gains' => $budget ? ($realisations['total_gains'] - $budget['total_gains']) : $realisations['total_gains'],    
+                    'gains' => $budget ? ($realisations['total_gains'] - $budget['total_gains']) : $realisations['total_gains'],
                     'depenses' => $budget ? ($realisations['total_depenses'] - $budget['total_depenses']) : $realisations['total_depenses'],
                     'solde_final' => $budget ? ($realisations['solde_final'] - $budget['solde_final_calculee']) : $realisations['solde_final']
                 ];
@@ -586,4 +586,52 @@ class AdminController
             Flight::redirect('/admin/budgets');
         }
     }
+    public function export()
+    {
+        if (!isset($_SESSION['utilisateur']) || $_SESSION['utilisateur']['role'] !== 'admin') {
+            Flight::redirect('/login');
+            return;
+        }
+
+        $startDate = $_POST['start_date'] ?? null;
+        $endDate = $_POST['end_date'] ?? null;
+
+        if (!$startDate || !$endDate) {
+            Flight::redirect('/admin/dashboard?error=missing_dates');
+            return;
+        }
+
+        [$startYear, $startMonth] = explode('-', $startDate);
+        [$endYear, $endMonth] = explode('-', $endDate);
+
+        if (($endYear < $startYear) || ($endYear == $startYear && $endMonth < $startMonth)) {
+            Flight::redirect('/admin/dashboard?error=invalid_date_range');
+            return;
+        }
+
+        $this->AdminModel->updateSituationGlobale(); // Optionnel mais recommandé
+        $this->AdminModel->exportSituationGlobaleToPDF((int) $startMonth, (int) $startYear, (int) $endMonth, (int) $endYear);
+    }
+
+    public function exportMonth()
+{
+    if (!isset($_SESSION['utilisateur']) || $_SESSION['utilisateur']['role'] !== 'admin') {
+        Flight::redirect('/login');
+        return;
+    }
+
+    $monthDate = $_POST['month_date'] ?? null;
+    if (!$monthDate) {
+        Flight::redirect('/admin/dashboard?error=missing_month');
+        return;
+    }
+
+    [$year, $month] = explode('-', $monthDate);
+
+    // Mettre à jour la situation globale pour garantir la cohérence
+    $this->AdminModel->updateSituationGlobale();
+
+    // Exporter les détails du mois en PDF
+    $this->AdminModel->exportMonthDetailsToPDF((int)$month, (int)$year);
+}
 }

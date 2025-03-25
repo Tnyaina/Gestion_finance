@@ -177,3 +177,11 @@ Flight::route('POST /admin/budgets/edit', function() {
     $controller = new AdminController();
     $controller->editBudget();
 });
+Flight::route('POST /admin/export', function(){
+    $controller = new AdminController();
+    $controller->export();
+});
+Flight::route('POST /admin/export_month', function() {
+    $controller = new AdminController();
+    $controller->exportMonth();
+});
